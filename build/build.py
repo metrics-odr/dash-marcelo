@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Gera a dashboard estatica (index.html) cruzando duas abas da planilha central:
+Gera a dashboard estatica (index.html) a partir de duas abas da planilha central:
 
   - "Leads"    (gid 2135966057): leads reais + coluna N (faturamento) => qualificacao
   - "Meta Ads" (gid 1245628405): investimento/impressoes/cliques do gerenciador
 
 Criterio de Lead Qualificado (MQL): faturamento medio mensal >= 30 mil (coluna N).
 
-O script roda 100% na nuvem (GitHub Actions). Ele apenas LE as planilhas via
-export CSV publico; nunca escreve nada de volta. Para teste local, use
---leads-file / --meta-file apontando para CSVs baixados.
+Este script apenas LE as planilhas (export CSV publico) e emite os REGISTROS BRUTOS
+(leads[] e meta[]) dentro do HTML. Todos os filtros, agregacoes, KPIs, tabelas e
+graficos sao calculados no navegador (client-side), permitindo filtro por data e
+filtro cruzado bidirecional sem recarregar. Nunca escreve nada de volta.
+
+Teste local: --leads-file / --meta-file apontando para CSVs baixados.
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ import argparse
 import csv
 import io
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -29,11 +33,12 @@ GID_LEADS = "2135966057"
 GID_META = "1245628405"
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 
-BRT = timezone(timedelta(hours=-3))  # horario de Brasilia, so para exibicao
+BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
+TAX_FACTOR = 1.13806                  # imposto Meta Ads (+13,806%) — toggle no front
 
 
 # --------------------------------------------------------------------------- #
-# Leitura das planilhas
+# Leitura
 # --------------------------------------------------------------------------- #
 def fetch_csv(url: str) -> list[list[str]]:
     req = urllib.request.Request(url, headers={"User-Agent": "dash-marcelo-bot/1.0"})
@@ -48,18 +53,14 @@ def read_csv_file(path: str) -> list[list[str]]:
 
 
 def load_rows(url: str, local: str | None) -> list[list[str]]:
-    if local:
-        return read_csv_file(local)
-    return fetch_csv(url)
+    return read_csv_file(local) if local else fetch_csv(url)
 
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
 def strip_accents(s: str) -> str:
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
-    )
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
 def norm(s: str | None) -> str:
@@ -67,18 +68,16 @@ def norm(s: str | None) -> str:
 
 
 def to_float(v) -> float:
-    """Converte '1.234,56' / 'R$ 30,89' / '30.89' em float."""
     if v is None:
         return 0.0
     if isinstance(v, (int, float)):
         return float(v)
-    s = str(v).strip()
+    s = re.sub(r"[^\d,.\-]", "", str(v).strip())
     if not s:
         return 0.0
-    s = re.sub(r"[^\d,.\-]", "", s)
-    if "," in s and "." in s:          # 1.234,56 -> 1234.56
+    if "," in s and "." in s:
         s = s.replace(".", "").replace(",", ".")
-    elif "," in s:                     # 30,89 -> 30.89
+    elif "," in s:
         s = s.replace(",", ".")
     try:
         return float(s)
@@ -87,13 +86,12 @@ def to_float(v) -> float:
 
 
 def parse_date(v: str) -> str | None:
-    """Devolve 'YYYY-MM-DD' a partir de varios formatos."""
     if not v:
         return None
     s = str(v).strip()
     if not s:
         return None
-    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)  # ISO / created_time
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
     if m:
         return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
     for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d/%m/%y", "%b %d, %Y", "%Y/%m/%d"):
@@ -108,11 +106,11 @@ def is_test_lead(rowtext: str) -> bool:
     return "<test lead" in rowtext.lower()
 
 
-# Criterio de qualificacao: faturamento medio mensal >= 30 mil (coluna N).
 _NUM_RE = re.compile(r"\d+")
 
 
 def is_qualified(bucket: str | None) -> bool:
+    """MQL = faturamento medio mensal >= 30 mil (coluna N)."""
     s = norm(bucket)
     if not s or "test lead" in s:
         return False
@@ -120,30 +118,17 @@ def is_qualified(bucket: str | None) -> bool:
     if not nums:
         return False
     if "menos" in s or "ate " in s or "abaixo" in s:
-        return False                    # faixa abaixo de X => nao qualifica
+        return False
     if "entre" in s:
-        return min(nums) >= 30          # limite inferior da faixa >= 30 mil
+        return min(nums) >= 30
     if any(k in s for k in ("mais", "acima", "superior", "maior")):
         return max(nums) >= 30
-    return max(nums) >= 30              # fallback
-
-
-def bucket_lower(bucket: str) -> int:
-    """Chave de ordenacao das faixas de faturamento (menor -> maior)."""
-    s = norm(bucket)
-    nums = [int(n) for n in _NUM_RE.findall(s)]
-    if not nums:
-        return 10**9                    # sem resposta vai pro fim
-    if "menos" in s or "ate " in s or "abaixo" in s:
-        return -1
-    return min(nums)
+    return max(nums) >= 30
 
 
 def pretty_bucket(bucket: str) -> str:
     s = (bucket or "").strip()
-    if not s:
-        return "Sem resposta"
-    return s.replace("_", " ").replace(" e ", " a ").capitalize()
+    return s.replace("_", " ").replace(" e ", " a ").capitalize() if s else "Sem resposta"
 
 
 def mask_email(e: str) -> str:
@@ -152,29 +137,30 @@ def mask_email(e: str) -> str:
         return "—"
     user, dom = e.split("@", 1)
     keep = user[:2] if len(user) > 2 else user[:1]
-    return f"{keep}{'*' * 4}@{dom}"
+    return f"{keep}****@{dom}"
 
 
 def mask_phone(p: str) -> str:
     digits = re.sub(r"\D", "", p or "")
-    if len(digits) < 4:
-        return "—"
-    return f"…{digits[-4:]}"
+    return f"…{digits[-4:]}" if len(digits) >= 4 else "—"
 
 
 def first_last_initial(name: str) -> str:
     parts = (name or "").strip().split()
     if not parts:
         return "—"
-    if len(parts) == 1:
-        return parts[0]
-    return f"{parts[0]} {parts[-1][:1]}."
+    return parts[0] if len(parts) == 1 else f"{parts[0]} {parts[-1][:1]}."
+
+
+def valid_utm(campaign: str) -> bool:
+    c = (campaign or "").strip()
+    return bool(c) and c not in ("-", "—")
 
 
 # --------------------------------------------------------------------------- #
-# Indexacao das colunas (por cabecalho, com fallback posicional)
+# Indexacao das colunas
 # --------------------------------------------------------------------------- #
-def header_index(header: list[str], wanted: dict[str, list[str]], fallback: dict[str, int]) -> dict[str, int]:
+def header_index(header, wanted, fallback):
     idx = {}
     hn = [norm(h) for h in header]
     for key, aliases in wanted.items():
@@ -191,33 +177,24 @@ def header_index(header: list[str], wanted: dict[str, list[str]], fallback: dict
     return idx
 
 
-def cell(row: list[str], i: int | None) -> str:
+def cell(row, i):
     if i is None or i < 0 or i >= len(row):
         return ""
     return (row[i] or "").strip()
 
 
 # --------------------------------------------------------------------------- #
-# Processamento
+# Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
 def process(leads_rows, meta_rows):
-    # ---- Leads ----
     lheader = leads_rows[0] if leads_rows else []
     lidx = header_index(
         lheader,
-        {
-            "created": ["created_time", "data", "created"],
-            "ad_name": ["ad_name"],
-            "adset_name": ["adset_name"],
-            "campaign": ["campaign_name"],
-            "is_organic": ["is_organic"],
-            "platform": ["platform"],
-            "profession": ["qual_sua_profissao", "profiss"],
-            "faturamento": ["qual_seu_faturamento", "faturamento"],
-            "name": ["full_name", "nome"],
-            "email": ["email"],
-            "phone": ["phone_number", "phone", "telefone"],
-        },
+        {"created": ["created_time", "data", "created"], "ad_name": ["ad_name"],
+         "adset_name": ["adset_name"], "campaign": ["campaign_name"], "is_organic": ["is_organic"],
+         "platform": ["platform"], "profession": ["qual_sua_profissao", "profiss"],
+         "faturamento": ["qual_seu_faturamento", "faturamento"], "name": ["full_name", "nome"],
+         "email": ["email"], "phone": ["phone_number", "phone", "telefone"]},
         {"created": 1, "ad_name": 3, "adset_name": 5, "campaign": 7, "is_organic": 10, "platform": 11,
          "profession": 12, "faturamento": 13, "name": 14, "email": 15, "phone": 16},
     )
@@ -226,51 +203,42 @@ def process(leads_rows, meta_rows):
     for row in leads_rows[1:]:
         if not any((c or "").strip() for c in row):
             continue
-        rowtext = " ".join(str(c) for c in row)
-        if is_test_lead(rowtext):
+        if is_test_lead(" ".join(str(c) for c in row)):
             continue
-        created = cell(row, lidx["created"])
-        date = parse_date(created)
         organic = norm(cell(row, lidx["is_organic"])) in ("true", "1", "sim", "verdadeiro")
         platform = norm(cell(row, lidx["platform"]))
         campaign = cell(row, lidx["campaign"])
-        ad = cell(row, lidx["ad_name"])
-        fat = cell(row, lidx["faturamento"])
         if organic:
-            source = "Orgânico"
+            src = "org"
+        elif norm(campaign).startswith("goog") or platform in ("google", "youtube"):
+            src = "google"
         elif platform in ("ig", "fb", "instagram", "facebook") or campaign:
-            source = "Meta Ads"
+            src = "meta"
         else:
-            source = "Outros"
+            src = "outros"
+        fat = cell(row, lidx["faturamento"])
         leads.append({
-            "date": date,
-            "source": source,
-            "platform": platform or "—",
-            "campaign": campaign or "(sem campanha)",
+            "d": parse_date(cell(row, lidx["created"])),
+            "src": src,
+            "plat": platform or "—",
+            "camp": campaign or "(sem campanha)",
             "adset": cell(row, lidx["adset_name"]) or "(sem conjunto)",
-            "ad": ad or "(sem anúncio)",
-            "profession": cell(row, lidx["profession"]) or "Sem resposta",
-            "bucket": fat,
-            "qualified": is_qualified(fat),
-            "name": first_last_initial(cell(row, lidx["name"])),
-            "email": mask_email(cell(row, lidx["email"])),
-            "phone": mask_phone(cell(row, lidx["phone"])),
+            "ad": cell(row, lidx["ad_name"]) or "(sem anúncio)",
+            "prof": (cell(row, lidx["profession"]) or "Sem resposta").replace("_", " ").capitalize(),
+            "bucket": pretty_bucket(fat),
+            "q": 1 if is_qualified(fat) else 0,
+            "utm": 1 if valid_utm(campaign) else 0,
+            "nm": first_last_initial(cell(row, lidx["name"])),
+            "em": mask_email(cell(row, lidx["email"])),
+            "ph": mask_phone(cell(row, lidx["phone"])),
         })
 
-    # ---- Meta Ads ----
     mheader = meta_rows[0] if meta_rows else []
     midx = header_index(
         mheader,
-        {
-            "day": ["day", "data"],
-            "campaign": ["campaign name", "campaign"],
-            "adset": ["ad set name", "adset"],
-            "ad": ["ad name"],
-            "spent": ["amount spent", "valor gasto", "gasto"],
-            "impr": ["impressions", "impress"],
-            "clicks": ["link clicks", "clicks", "cliques"],
-            "leads": ["leads"],
-        },
+        {"day": ["day", "data"], "campaign": ["campaign name", "campaign"], "adset": ["ad set name", "adset"],
+         "ad": ["ad name"], "spent": ["amount spent", "valor gasto", "gasto"], "impr": ["impressions", "impress"],
+         "clicks": ["link clicks", "clicks", "cliques"], "leads": ["leads"]},
         {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5, "clicks": 6, "leads": 7},
     )
 
@@ -278,178 +246,40 @@ def process(leads_rows, meta_rows):
     for row in meta_rows[1:]:
         if not any((c or "").strip() for c in row):
             continue
-        day = parse_date(cell(row, midx["day"]))
         meta.append({
-            "date": day,
-            "campaign": cell(row, midx["campaign"]) or "(sem campanha)",
+            "d": parse_date(cell(row, midx["day"])),
+            "camp": cell(row, midx["campaign"]) or "(sem campanha)",
             "adset": cell(row, midx["adset"]) or "(sem conjunto)",
             "ad": cell(row, midx["ad"]) or "(sem anúncio)",
-            "spent": to_float(cell(row, midx["spent"])),
-            "impr": to_float(cell(row, midx["impr"])),
-            "clicks": to_float(cell(row, midx["clicks"])),
-            "meta_leads": to_float(cell(row, midx["leads"])),
+            "sp": round(to_float(cell(row, midx["spent"])), 4),
+            "im": to_float(cell(row, midx["impr"])),
+            "cl": to_float(cell(row, midx["clicks"])),
+            "ml": to_float(cell(row, midx["leads"])),
         })
 
-    # ---- Totais ----
-    gasto = sum(m["spent"] for m in meta)
-    impr = sum(m["impr"] for m in meta)
-    clicks = sum(m["clicks"] for m in meta)
-    meta_leads = sum(m["meta_leads"] for m in meta)
-
-    leads_total = len(leads)
-    leads_ads = sum(1 for l in leads if l["source"] == "Meta Ads")
-    leads_org = sum(1 for l in leads if l["source"] == "Orgânico")
-    mqls = sum(1 for l in leads if l["qualified"])
-    mqls_ads = sum(1 for l in leads if l["qualified"] and l["source"] == "Meta Ads")
-
-    # ---- Serie diaria (eixo x compartilhado) ----
-    dates = sorted({d for d in (
-        [l["date"] for l in leads if l["date"]] + [m["date"] for m in meta if m["date"]]
-    )})
-    _wd = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
-    daily = []
-    for d in dates:
-        try:
-            wd = _wd[datetime.strptime(d, "%Y-%m-%d").weekday()]
-        except ValueError:
-            wd = ""
-        daily.append({
-            "date": d,
-            "weekday": wd,
-            "gasto": round(sum(m["spent"] for m in meta if m["date"] == d), 2),
-            "impr": sum(m["impr"] for m in meta if m["date"] == d),
-            "clicks": sum(m["clicks"] for m in meta if m["date"] == d),
-            "leads": sum(1 for l in leads if l["date"] == d),
-            "mqls": sum(1 for l in leads if l["date"] == d and l["qualified"]),
-        })
-
-    # ---- Breakdowns ----
-    def group(items, keyfn, spentmap=None):
-        out = {}
-        for it in items:
-            k = keyfn(it)
-            g = out.setdefault(k, {"leads": 0, "mqls": 0, "gasto": 0.0})
-            g["leads"] += 1
-            g["mqls"] += 1 if it["qualified"] else 0
-        return out
-
-    by_source = {}
-    for l in leads:
-        g = by_source.setdefault(l["source"], {"leads": 0, "mqls": 0})
-        g["leads"] += 1
-        g["mqls"] += 1 if l["qualified"] else 0
-
-    by_platform = {}
-    for l in leads:
-        g = by_platform.setdefault(l["platform"], {"leads": 0, "mqls": 0})
-        g["leads"] += 1
-        g["mqls"] += 1 if l["qualified"] else 0
-
-    # Faixas de faturamento (ordenadas menor -> maior)
-    bucket_groups = {}
-    for l in leads:
-        key = l["bucket"] or ""
-        g = bucket_groups.setdefault(key, {"leads": 0, "qualified": is_qualified(key), "lower": bucket_lower(key)})
-        g["leads"] += 1
-    by_bucket = sorted(
-        ({"label": pretty_bucket(k), "leads": v["leads"], "qualified": v["qualified"], "lower": v["lower"]}
-         for k, v in bucket_groups.items()),
-        key=lambda x: x["lower"],
-    )
-
-    # Profissao (top 12)
-    prof = {}
-    for l in leads:
-        prof[l["profession"]] = prof.get(l["profession"], 0) + 1
-    by_profession = sorted(
-        ({"label": k.replace("_", " ").capitalize(), "leads": v} for k, v in prof.items()),
-        key=lambda x: -x["leads"],
-    )[:12]
-
-    # Cruzamento Meta-Ads: gasto/impr/cliques (Meta) x leads/mqls (Leads, so Meta)
-    def cross(dim_meta, dim_lead):
-        g = {}
-        for m in meta:
-            d = g.setdefault(m[dim_meta], {"gasto": 0.0, "impr": 0.0, "clicks": 0.0, "leads": 0, "mqls": 0})
-            d["gasto"] += m["spent"]; d["impr"] += m["impr"]; d["clicks"] += m["clicks"]
-        for l in leads:
-            if l["source"] != "Meta Ads":
-                continue
-            d = g.setdefault(l[dim_lead], {"gasto": 0.0, "impr": 0.0, "clicks": 0.0, "leads": 0, "mqls": 0})
-            d["leads"] += 1; d["mqls"] += 1 if l["qualified"] else 0
-        return g
-
-    def rows_from(g, labelfn, withfull=False):
-        out = []
-        for k, v in g.items():
-            row = {"label": labelfn(k), "gasto": round(v["gasto"], 2), "impr": v["impr"],
-                   "clicks": v["clicks"], "leads": v["leads"], "mqls": v["mqls"]}
-            if withfull:
-                row["full"] = k
-            out.append(row)
-        return sorted(out, key=lambda x: (-x["gasto"], -x["leads"]))
-
-    by_campaign = rows_from(cross("campaign", "campaign"), short_campaign, withfull=True)
-    by_adset = rows_from(cross("adset", "adset"), lambda k: k)
-    by_ad = rows_from(cross("ad", "ad"), lambda k: k)
-
-    # Tabela de leads qualificados (contatos mascarados)
-    qualified_leads = sorted(
-        ({"date": l["date"] or "—", "name": l["name"], "profession": l["profession"].replace("_", " ").capitalize(),
-          "bucket": pretty_bucket(l["bucket"]), "source": l["source"], "campaign": short_campaign(l["campaign"]),
-          "email": l["email"], "phone": l["phone"]}
-         for l in leads if l["qualified"]),
-        key=lambda x: x["date"], reverse=True,
-    )
-
-    date_min = dates[0] if dates else None
-    date_max = dates[-1] if dates else None
-
+    dates = sorted({d for d in ([l["d"] for l in leads if l["d"]] + [m["d"] for m in meta if m["d"]])})
+    now_brt = datetime.now(BRT)
     return {
         "build": {
-            "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "generated_at_brt": datetime.now(BRT).strftime("%d/%m/%Y %H:%M"),
+            "generated_at_brt": now_brt.strftime("%d/%m/%Y %H:%M"),
             "build_id": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
-            "date_min": date_min,
-            "date_max": date_max,
-            "tax_factor": 1.1385,
+            "today": now_brt.strftime("%Y-%m-%d"),
+            "date_min": dates[0] if dates else None,
+            "date_max": dates[-1] if dates else None,
+            "tax_factor": TAX_FACTOR,
         },
-        "base": {
-            "gasto": round(gasto, 2), "impr": impr, "clicks": clicks, "meta_leads": meta_leads,
-            "leads_total": leads_total, "leads_ads": leads_ads, "leads_org": leads_org,
-            "mqls": mqls, "mqls_ads": mqls_ads,
-        },
-        "daily": daily,
-        "by_source": [{"label": k, **v} for k, v in sorted(by_source.items(), key=lambda x: -x[1]["leads"])],
-        "by_platform": [{"label": k, **v} for k, v in sorted(by_platform.items(), key=lambda x: -x[1]["leads"])],
-        "by_bucket": by_bucket,
-        "by_profession": by_profession,
-        "by_campaign": by_campaign,
-        "by_adset": by_adset,
-        "by_ad": by_ad,
-        "qualified_leads": qualified_leads,
+        "leads": leads,
+        "meta": meta,
     }
-
-
-def short_campaign(name: str) -> str:
-    """Encurta 'BTBExp | E2-CAP | ... | 2026-07-25 | Teste' para algo legivel."""
-    if not name or name == "(sem campanha)":
-        return "(sem campanha)"
-    parts = [p.strip() for p in name.split("|")]
-    tag = next((p for p in parts if re.search(r"E\d-\w+", p)), None)
-    head = parts[0] if parts else name
-    label = f"{head} · {tag}" if tag and tag != head else head
-    return label[:48]
 
 
 # --------------------------------------------------------------------------- #
 # Render
 # --------------------------------------------------------------------------- #
-def render(data: dict, template_path: str) -> str:
+def render(data, template_path):
     with open(template_path, "r", encoding="utf-8") as f:
         tpl = f.read()
-    payload = json.dumps(data, ensure_ascii=False)
-    tpl = tpl.replace("__DATA_JSON__", payload)
+    tpl = tpl.replace("__DATA_JSON__", json.dumps(data, ensure_ascii=False))
     tpl = tpl.replace("__BUILD_ID__", data["build"]["build_id"])
     tpl = tpl.replace("__GENERATED_BRT__", data["build"]["generated_at_brt"])
     return tpl
@@ -465,22 +295,19 @@ def main():
 
     leads_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_LEADS), args.leads_file)
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
-
     data = process(leads_rows, meta_rows)
 
-    import os
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    html = render(data, args.template)
     with open(args.out, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(render(data, args.template))
 
-    b, base = data["build"], data["base"]
+    b = data["build"]
+    q = sum(l["q"] for l in data["leads"])
     print("== build ok ==", file=sys.stderr)
-    print(f"  periodo   : {b['date_min']} -> {b['date_max']}", file=sys.stderr)
-    print(f"  gasto     : R$ {base['gasto']:.2f}", file=sys.stderr)
-    print(f"  leads     : {base['leads_total']} (ads {base['leads_ads']} / org {base['leads_org']})", file=sys.stderr)
-    print(f"  MQLs >=30k: {base['mqls']}  (CPMQL R$ {base['gasto']/base['mqls']:.2f})" if base["mqls"] else "  MQLs: 0", file=sys.stderr)
-    print(f"  out       : {args.out}", file=sys.stderr)
+    print(f"  periodo : {b['date_min']} -> {b['date_max']}", file=sys.stderr)
+    print(f"  leads   : {len(data['leads'])}  MQLs>=30k: {q}", file=sys.stderr)
+    print(f"  meta    : {len(data['meta'])} linhas", file=sys.stderr)
+    print(f"  out     : {args.out}", file=sys.stderr)
 
 
 if __name__ == "__main__":
