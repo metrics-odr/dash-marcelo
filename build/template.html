@@ -94,6 +94,23 @@
   tbody tr:hover{background:color-mix(in srgb,var(--s1) 6%,transparent)}
   .tag-q{color:var(--good); font-weight:600}
   .note{font-size:12px; color:var(--muted); margin-top:8px}
+
+  /* funil visual em etapas */
+  .funnel{display:flex; flex-direction:column; gap:8px}
+  .step{display:flex; align-items:center; justify-content:space-between; gap:16px;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:12px 16px;
+    border-left:4px solid var(--s1)}
+  .step.na{border-left-color:var(--baseline); opacity:.72}
+  .step .main{display:flex; flex-direction:column; gap:1px}
+  .step .main .m-label{font-size:12px; color:var(--ink-2)}
+  .step .main .m-val{font-size:22px; font-weight:650; letter-spacing:-.02em}
+  .step .secs{display:flex; gap:22px; flex-wrap:wrap; text-align:right}
+  .step .secs .s{display:flex; flex-direction:column}
+  .step .secs .s .s-label{font-size:11px; color:var(--muted)}
+  .step .secs .s .s-val{font-size:15px; font-weight:600; font-variant-numeric:tabular-nums}
+  .step .na-tag{font-size:11px; color:var(--muted); border:1px dashed var(--border); border-radius:999px; padding:2px 9px}
+  @media(max-width:560px){ .step{flex-direction:column; align-items:flex-start; gap:8px} .step .secs{text-align:left} }
+  .hm{font-variant-numeric:tabular-nums}
   .foot{margin-top:34px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding-top:14px}
   .foot code{background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:1px 6px}
   .empty{color:var(--muted); font-size:13px; padding:14px 0}
@@ -142,16 +159,63 @@
   </section>
 
   <section>
-    <h2 class="sec-title">Cruzamento por campanha</h2>
-    <div class="card">
+    <h2 class="sec-title">Captura Meta Ads · funil de tráfego pago</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Funil em etapas (E2‑CAP · Meta Ads)</h3>
+        <p class="hint">Topo → fundo. Etapas sem fonte nas 2 planilhas ficam marcadas como “sem dado”.</p>
+        <div class="funnel" id="funnel"></div>
+      </div>
+      <div class="card">
+        <h3>Combinação diária — Meta Ads</h3>
+        <p class="hint">Gasto (barra) · CPL e CPMQL (linhas)</p>
+        <div class="chart-box" style="height:210px"><canvas id="cMetaGasto"></canvas></div>
+        <div class="chart-box" style="height:210px; margin-top:8px"><canvas id="cMetaCpl"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Resultados gerais por dia</h3>
+      <p class="hint">Heatmap: verde = melhor, vermelho = pior (por coluna). Fonte: cruzamento Meta‑Ads.</p>
       <div class="table-scroll">
-        <table id="tCamp">
-          <thead><tr><th>Campanha</th><th>Gasto</th><th>Leads</th><th>MQLs</th><th>CPL</th><th>CPMQL</th><th>Tx‑MQL</th></tr></thead>
+        <table id="tDaily" class="hm">
+          <thead><tr><th>Data</th><th>Dia</th><th>Gasto</th><th>CPM</th><th>CTR</th><th>Leads</th><th>CPL</th><th>Tx‑MQL</th><th>MQLs</th><th>CPMQL</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p class="note">Gasto vem do Meta Ads; Leads/MQLs vêm da lista de leads; CPL/CPMQL/Tx‑MQL são calculados no cruzamento.</p>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Campanhas</h3>
+      <div class="table-scroll">
+        <table id="tCamp">
+          <thead><tr><th>Campanha</th><th>Gasto</th><th>CPM</th><th>CTR</th><th>CPC</th><th>Leads</th><th>CPL</th><th>MQLs</th><th>CPMQL</th><th>Tx‑MQL</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:16px">
+      <div class="card">
+        <h3>Conjuntos (Ad Sets)</h3>
+        <div class="table-scroll">
+          <table id="tAdset">
+            <thead><tr><th>Conjunto</th><th>Gasto</th><th>CTR</th><th>Leads</th><th>CPL</th><th>MQLs</th><th>CPMQL</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Anúncios</h3>
+        <div class="table-scroll">
+          <table id="tAd">
+            <thead><tr><th>Anúncio</th><th>Gasto</th><th>CTR</th><th>Leads</th><th>CPL</th><th>MQLs</th><th>CPMQL</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="note">Etapas <b>Page Views, Vendas e Faturamento</b> (CR, CPV, ConvLP, CAC, ROAS, Ticket) exigem a lista de compradores / page views — não estão nas 2 abas fornecidas, por isso aparecem como “sem dado”.</p>
   </section>
 
   <section>
@@ -353,31 +417,121 @@ function renderCharts(){
       scales:{x:{beginAtZero:true, ticks:{color:cssv('--muted'), precision:0}, grid:{color:cssv('--grid')}, border:{display:false}},
               y:{ticks:{color:cssv('--muted')}, grid:{display:false}, border:{color:cssv('--baseline')}}}})
   });
+
+  // ---- Captura Meta Ads: combinação diária ----
+  state.charts.mg = new Chart(document.getElementById('cMetaGasto'), {
+    type:'bar',
+    data:{labels, datasets:[{label:'Gasto Meta', data:d.map(x=>+(x.gasto*f).toFixed(2)), backgroundColor:S1, borderRadius:4, maxBarThickness:26}]},
+    options:baseOpts({plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'Gasto: '+brl(c.raw)}}}})
+  });
+  const mcpl = d.map(x=> x.leads ? +(x.gasto*f/x.leads).toFixed(2) : null);
+  const mcpmql = d.map(x=> x.mqls ? +(x.gasto*f/x.mqls).toFixed(2) : null);
+  state.charts.mc = new Chart(document.getElementById('cMetaCpl'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'CPL', data:mcpl, borderColor:S1, backgroundColor:S1, borderWidth:2, pointRadius:2, spanGaps:true, tension:.25},
+      {label:'CPMQL', data:mcpmql, borderColor:S2, backgroundColor:S2, borderWidth:2, pointRadius:2, spanGaps:true, tension:.25},
+    ]},
+    options:baseOpts({plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw==null?'—':brl(c.raw))}}}})
+  });
 }
 
-/* ---------- tabelas ---------- */
-function renderTables(){
+/* ---------- funil Meta Ads (a partir dos totais Meta) ---------- */
+function derive(g, impr, clicks, leads, mqls){
+  return {
+    cpm: impr ? g/impr*1000 : null,
+    ctr: impr ? clicks/impr : null,
+    cpc: clicks ? g/clicks : null,
+    cpl: leads ? g/leads : null,
+    cpmql: mqls ? g/mqls : null,
+    tx: leads ? mqls/leads : null,
+  };
+}
+function renderFunnel(){
+  const b = DATA.base, f = factor(), g = b.gasto*f;
+  const m = derive(g, b.impr, b.clicks, b.leads_ads, b.mqls_ads);
+  const NA = '<span class="na-tag">sem dado</span>';
+  const steps = [
+    {main:['Gasto Total', brl(g)], secs:[]},
+    {main:['Impressões', int(b.impr)], secs:[['CPM', m.cpm==null?'—':brl(m.cpm)], ['Frequência', NA]]},
+    {main:['Cliques', int(b.clicks)], secs:[['CTR', pct(m.ctr)], ['CPC', m.cpc==null?'—':brl(m.cpc)]]},
+    {main:['Page Views', NA], secs:[['CR', NA], ['CPV', NA]], na:true},
+    {main:['Leads', int(b.leads_ads)], secs:[['CPL', m.cpl==null?'—':brl(m.cpl)], ['ConvLP', NA]]},
+    {main:['MQLs (≥30k)', int(b.mqls_ads)], secs:[['Tx‑MQL', pct(m.tx)], ['CPMQL', m.cpmql==null?'—':brl(m.cpmql)]]},
+    {main:['Vendas', NA], secs:[['ConvMQL', NA], ['CAC', NA]], na:true},
+    {main:['Faturamento', NA], secs:[['ROAS', NA], ['Ticket Médio', NA]], na:true},
+  ];
+  document.getElementById('funnel').innerHTML = steps.map(s=>`
+    <div class="step ${s.na?'na':''}">
+      <div class="main"><span class="m-label">${s.main[0]}</span><span class="m-val">${s.main[1]}</span></div>
+      <div class="secs">${s.secs.map(x=>`<div class="s"><span class="s-label">${x[0]}</span><span class="s-val">${x[1]}</span></div>`).join('')}</div>
+    </div>`).join('');
+}
+
+/* ---------- heatmap (verde=melhor, vermelho=pior) ---------- */
+function heat(v, lo, hi, lowerBetter){
+  if(v==null || hi===lo) return 'transparent';
+  let t=(v-lo)/(hi-lo); let good = lowerBetter ? 1-t : t;
+  const bad=[227,73,72], gd=[12,163,12];
+  const r=Math.round(bad[0]+(gd[0]-bad[0])*good), g=Math.round(bad[1]+(gd[1]-bad[1])*good), b=Math.round(bad[2]+(gd[2]-bad[2])*good);
+  const a=(0.10+0.34*Math.abs(good-0.5)*2).toFixed(2);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function renderMetaDaily(){
   const f = factor();
-  const camp = DATA.by_campaign;
-  const tb = document.querySelector('#tCamp tbody');
-  if(!camp.length){ tb.innerHTML='<tr><td colspan="7" class="empty">Sem dados.</td></tr>'; }
-  else tb.innerHTML = camp.map(c=>{
-    const g=c.gasto*f, cpl=c.leads?g/c.leads:null, cpmql=c.mqls?g/c.mqls:null, tx=c.leads?c.mqls/c.leads:null;
-    return `<tr><td title="${c.full||''}">${c.label}</td><td>${brl(g)}</td><td>${int(c.leads)}</td>
-      <td class="${c.mqls?'tag-q':''}">${int(c.mqls)}</td><td>${cpl==null?'—':brl(cpl)}</td>
-      <td>${cpmql==null?'—':brl(cpmql)}</td><td>${pct(tx)}</td></tr>`;
+  const rows = DATA.daily.map(d=>{ const g=d.gasto*f; const dv=derive(g,d.impr,d.clicks,d.leads,d.mqls);
+    return {date:d.date, wd:d.weekday, gasto:g, cpm:dv.cpm, ctr:dv.ctr, leads:d.leads, cpl:dv.cpl, tx:dv.tx, mqls:d.mqls, cpmql:dv.cpmql}; });
+  const cols = [
+    {k:'gasto', f:brl, low:false}, {k:'cpm', f:v=>v==null?'—':brl(v), low:true}, {k:'ctr', f:pct, low:false},
+    {k:'leads', f:int, low:false}, {k:'cpl', f:v=>v==null?'—':brl(v), low:true}, {k:'tx', f:pct, low:false},
+    {k:'mqls', f:int, low:false}, {k:'cpmql', f:v=>v==null?'—':brl(v), low:true},
+  ];
+  const ext = {};
+  cols.forEach(c=>{ const vals=rows.map(r=>r[c.k]).filter(v=>v!=null && isFinite(v)); ext[c.k]=[Math.min(...vals), Math.max(...vals)]; });
+  const tb = document.querySelector('#tDaily tbody');
+  tb.innerHTML = rows.map(r=>`<tr><td>${r.date.slice(5)}</td><td>${r.wd}</td>`+
+    cols.map(c=>`<td style="background:${heat(r[c.k], ext[c.k][0], ext[c.k][1], c.low)}">${c.f(r[c.k])}</td>`).join('')+`</tr>`).join('');
+}
+
+/* ---------- tabelas Meta (campanha / conjunto / anúncio) ---------- */
+function metaRow(x, f, withFull){
+  const g=x.gasto*f, dv=derive(g, x.impr, x.clicks, x.leads, x.mqls);
+  const first = withFull ? `<td title="${x.full||''}">${x.label}</td>` : `<td>${x.label}</td>`;
+  return {g, dv, first};
+}
+function renderMetaTables(){
+  const f = factor();
+  const camp = DATA.by_campaign, tb = document.querySelector('#tCamp tbody');
+  if(!camp.length){ tb.innerHTML='<tr><td colspan="10" class="empty">Sem dados.</td></tr>'; }
+  else tb.innerHTML = camp.map(x=>{ const {g,dv,first}=metaRow(x,f,true);
+    return `<tr>${first}<td>${brl(g)}</td><td>${dv.cpm==null?'—':brl(dv.cpm)}</td><td>${pct(dv.ctr)}</td>
+      <td>${dv.cpc==null?'—':brl(dv.cpc)}</td><td>${int(x.leads)}</td><td>${dv.cpl==null?'—':brl(dv.cpl)}</td>
+      <td class="${x.mqls?'tag-q':''}">${int(x.mqls)}</td><td>${dv.cpmql==null?'—':brl(dv.cpmql)}</td><td>${pct(dv.tx)}</td></tr>`;
   }).join('');
 
+  const small = (arr, id)=>{ const el=document.querySelector(id+' tbody');
+    if(!arr.length){ el.innerHTML='<tr><td colspan="7" class="empty">Sem dados.</td></tr>'; return; }
+    el.innerHTML = arr.map(x=>{ const {g,dv,first}=metaRow(x,f,false);
+      return `<tr>${first}<td>${brl(g)}</td><td>${pct(dv.ctr)}</td><td>${int(x.leads)}</td>
+        <td>${dv.cpl==null?'—':brl(dv.cpl)}</td><td class="${x.mqls?'tag-q':''}">${int(x.mqls)}</td><td>${dv.cpmql==null?'—':brl(dv.cpmql)}</td></tr>`;
+    }).join('');
+  };
+  small(DATA.by_adset, '#tAdset');
+  small(DATA.by_ad, '#tAd');
+}
+
+/* ---------- leads qualificados ---------- */
+function renderQualified(){
   const q = DATA.qualified_leads;
   document.getElementById('qCount').textContent = q.length + ' leads';
   const qb = document.querySelector('#tQual tbody');
-  if(!q.length){ qb.innerHTML='<tr><td colspan="8" class="empty">Nenhum lead qualificado no período.</td></tr>'; }
-  else qb.innerHTML = q.map(r=>`<tr><td>${r.date}</td><td>${r.name}</td><td>${r.profession}</td>
+  if(!q.length){ qb.innerHTML='<tr><td colspan="8" class="empty">Nenhum lead qualificado no período.</td></tr>'; return; }
+  qb.innerHTML = q.map(r=>`<tr><td>${r.date}</td><td>${r.name}</td><td>${r.profession}</td>
     <td>${r.bucket}</td><td>${r.source}</td><td>${r.campaign}</td><td>${r.email}</td><td>${r.phone}</td></tr>`).join('');
 }
 
 /* ---------- boot ---------- */
-function renderAll(){ renderKpis(); renderCharts(); renderTables(); }
+function renderAll(){ renderKpis(); renderCharts(); renderFunnel(); renderMetaDaily(); renderMetaTables(); renderQualified(); }
 document.getElementById('taxToggle').addEventListener('change', e=>{ state.tax=e.target.checked; renderAll(); });
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
 document.getElementById('refreshBtn').addEventListener('click', ()=>{ location.href = location.pathname+'?t='+Date.now(); });

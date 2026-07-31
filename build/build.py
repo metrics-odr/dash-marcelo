@@ -208,6 +208,7 @@ def process(leads_rows, meta_rows):
         {
             "created": ["created_time", "data", "created"],
             "ad_name": ["ad_name"],
+            "adset_name": ["adset_name"],
             "campaign": ["campaign_name"],
             "is_organic": ["is_organic"],
             "platform": ["platform"],
@@ -217,7 +218,7 @@ def process(leads_rows, meta_rows):
             "email": ["email"],
             "phone": ["phone_number", "phone", "telefone"],
         },
-        {"created": 1, "ad_name": 3, "campaign": 7, "is_organic": 10, "platform": 11,
+        {"created": 1, "ad_name": 3, "adset_name": 5, "campaign": 7, "is_organic": 10, "platform": 11,
          "profession": 12, "faturamento": 13, "name": 14, "email": 15, "phone": 16},
     )
 
@@ -246,6 +247,7 @@ def process(leads_rows, meta_rows):
             "source": source,
             "platform": platform or "—",
             "campaign": campaign or "(sem campanha)",
+            "adset": cell(row, lidx["adset_name"]) or "(sem conjunto)",
             "ad": ad or "(sem anúncio)",
             "profession": cell(row, lidx["profession"]) or "Sem resposta",
             "bucket": fat,
@@ -280,6 +282,7 @@ def process(leads_rows, meta_rows):
         meta.append({
             "date": day,
             "campaign": cell(row, midx["campaign"]) or "(sem campanha)",
+            "adset": cell(row, midx["adset"]) or "(sem conjunto)",
             "ad": cell(row, midx["ad"]) or "(sem anúncio)",
             "spent": to_float(cell(row, midx["spent"])),
             "impr": to_float(cell(row, midx["impr"])),
@@ -303,10 +306,16 @@ def process(leads_rows, meta_rows):
     dates = sorted({d for d in (
         [l["date"] for l in leads if l["date"]] + [m["date"] for m in meta if m["date"]]
     )})
+    _wd = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
     daily = []
     for d in dates:
+        try:
+            wd = _wd[datetime.strptime(d, "%Y-%m-%d").weekday()]
+        except ValueError:
+            wd = ""
         daily.append({
             "date": d,
+            "weekday": wd,
             "gasto": round(sum(m["spent"] for m in meta if m["date"] == d), 2),
             "impr": sum(m["impr"] for m in meta if m["date"] == d),
             "clicks": sum(m["clicks"] for m in meta if m["date"] == d),
@@ -357,35 +366,32 @@ def process(leads_rows, meta_rows):
         key=lambda x: -x["leads"],
     )[:12]
 
-    # Cruzamento por campanha: gasto (Meta) x leads/mqls (Leads)
-    camp = {}
-    for m in meta:
-        g = camp.setdefault(m["campaign"], {"gasto": 0.0, "leads": 0, "mqls": 0})
-        g["gasto"] += m["spent"]
-    for l in leads:
-        g = camp.setdefault(l["campaign"], {"gasto": 0.0, "leads": 0, "mqls": 0})
-        g["leads"] += 1
-        g["mqls"] += 1 if l["qualified"] else 0
-    by_campaign = sorted(
-        ({"label": short_campaign(k), "full": k, "gasto": round(v["gasto"], 2),
-          "leads": v["leads"], "mqls": v["mqls"]} for k, v in camp.items()),
-        key=lambda x: (-x["gasto"], -x["leads"]),
-    )
+    # Cruzamento Meta-Ads: gasto/impr/cliques (Meta) x leads/mqls (Leads, so Meta)
+    def cross(dim_meta, dim_lead):
+        g = {}
+        for m in meta:
+            d = g.setdefault(m[dim_meta], {"gasto": 0.0, "impr": 0.0, "clicks": 0.0, "leads": 0, "mqls": 0})
+            d["gasto"] += m["spent"]; d["impr"] += m["impr"]; d["clicks"] += m["clicks"]
+        for l in leads:
+            if l["source"] != "Meta Ads":
+                continue
+            d = g.setdefault(l[dim_lead], {"gasto": 0.0, "impr": 0.0, "clicks": 0.0, "leads": 0, "mqls": 0})
+            d["leads"] += 1; d["mqls"] += 1 if l["qualified"] else 0
+        return g
 
-    # Cruzamento por anuncio
-    adm = {}
-    for m in meta:
-        g = adm.setdefault(m["ad"], {"gasto": 0.0, "leads": 0, "mqls": 0})
-        g["gasto"] += m["spent"]
-    for l in leads:
-        g = adm.setdefault(l["ad"], {"gasto": 0.0, "leads": 0, "mqls": 0})
-        g["leads"] += 1
-        g["mqls"] += 1 if l["qualified"] else 0
-    by_ad = sorted(
-        ({"label": k, "gasto": round(v["gasto"], 2), "leads": v["leads"], "mqls": v["mqls"]}
-         for k, v in adm.items()),
-        key=lambda x: (-x["gasto"], -x["leads"]),
-    )
+    def rows_from(g, labelfn, withfull=False):
+        out = []
+        for k, v in g.items():
+            row = {"label": labelfn(k), "gasto": round(v["gasto"], 2), "impr": v["impr"],
+                   "clicks": v["clicks"], "leads": v["leads"], "mqls": v["mqls"]}
+            if withfull:
+                row["full"] = k
+            out.append(row)
+        return sorted(out, key=lambda x: (-x["gasto"], -x["leads"]))
+
+    by_campaign = rows_from(cross("campaign", "campaign"), short_campaign, withfull=True)
+    by_adset = rows_from(cross("adset", "adset"), lambda k: k)
+    by_ad = rows_from(cross("ad", "ad"), lambda k: k)
 
     # Tabela de leads qualificados (contatos mascarados)
     qualified_leads = sorted(
@@ -419,6 +425,7 @@ def process(leads_rows, meta_rows):
         "by_bucket": by_bucket,
         "by_profession": by_profession,
         "by_campaign": by_campaign,
+        "by_adset": by_adset,
         "by_ad": by_ad,
         "qualified_leads": qualified_leads,
     }
