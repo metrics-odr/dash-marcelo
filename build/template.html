@@ -49,14 +49,14 @@
   .topbar .ptitle{font-weight:700; font-size:16px; white-space:nowrap}
   .sep{width:1px; height:26px; background:var(--border)}
   .date-field{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted)}
-  .date-field input{border:1px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; color:var(--ink); background:#fff}
+  .date-field input{border:1px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; color:var(--ink); background:var(--surface)}
   .presets{display:flex; gap:6px; flex-wrap:wrap}
-  .chip{border:1px solid var(--border); background:#fff; color:var(--ink); border-radius:999px; padding:5px 10px; font-size:12px; cursor:pointer; white-space:nowrap}
+  .chip{border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:999px; padding:5px 10px; font-size:12px; cursor:pointer; white-space:nowrap}
   .chip:hover{border-color:var(--accent-blue); color:var(--accent-blue)}
   .chip.active{background:var(--accent-blue); border-color:var(--accent-blue); color:#fff}
   .spacer{flex:1 1 auto}
   .updated{font-size:11.5px; color:var(--muted); text-align:right; line-height:1.3}
-  .btn{border:1px solid var(--border); background:#fff; color:var(--ink); border-radius:9px; padding:8px 12px; font-size:12.5px; cursor:pointer; display:inline-flex; gap:7px; align-items:center; white-space:nowrap}
+  .btn{border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:9px; padding:8px 12px; font-size:12.5px; cursor:pointer; display:inline-flex; gap:7px; align-items:center; white-space:nowrap}
   .btn:hover{border-color:var(--accent-blue)}
   .btn.primary{background:var(--accent-blue); border-color:var(--accent-blue); color:#fff}
   .btn.primary:hover{filter:brightness(1.06)}
@@ -97,7 +97,7 @@
   .kpi .kv{font-size:24px; font-weight:700; letter-spacing:-.02em; margin-top:6px}
   .kpi .ka{font-size:11.5px; color:var(--muted); margin-top:3px}
   .kpis.n2 .kpi .kv{font-size:19px}
-  .kpi.hero{background:linear-gradient(180deg,#eef2ff,#fff); border-color:#c9d4f7}
+  .kpi.hero{background:linear-gradient(180deg,var(--accent-blue-light),var(--surface)); border-color:var(--accent-blue)}
   .kpi.hero .kv{color:var(--accent-blue)}
   .pill{font-size:10.5px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
   .pill.q{color:var(--good); border-color:#bfe6bf}
@@ -107,7 +107,7 @@
 
   /* Funnel */
   .funnel{display:flex; flex-direction:column; gap:7px}
-  .step{display:flex; align-items:center; justify-content:space-between; gap:14px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:11px 15px; border-left:4px solid var(--accent-blue)}
+  .step{display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 15px; border-left:4px solid var(--accent-blue)}
   .step.na{border-left-color:var(--border); opacity:.7}
   .step .m-label{font-size:11.5px; color:var(--muted)}
   .step .m-val{font-size:20px; font-weight:700; letter-spacing:-.02em}
@@ -147,7 +147,7 @@
     .sidebar{transform:translateX(-100%); transition:transform .2s}
     #navToggle:checked ~ .sidebar{transform:none}
     .main-area{margin-left:0}
-    label.ham{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:9px; cursor:pointer; background:#fff}
+    label.ham{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:9px; cursor:pointer; background:var(--surface)}
   }
 </style>
 </head>
@@ -310,6 +310,7 @@ function derive(a){
   const g=a.sp*taxf();
   return {gasto:g, impr:a.im, clicks:a.cl, leads:a.leads, mqls:a.mqls,
     cpm:a.im?g/a.im*1000:null, ctr:a.im?a.cl/a.im:null, cpc:a.cl?g/a.cl:null,
+    convf:a.cl?a.leads/a.cl:null,
     cpl:a.leads?g/a.leads:null, cpmql:a.mqls?g/a.mqls:null, tx:a.leads?a.mqls/a.leads:null};
 }
 function buildAgg(fL,fM,dim){
@@ -331,14 +332,6 @@ function daily(fL,fM){
   return Object.values(days).sort((a,b)=>a.d<b.d?-1:1);
 }
 
-/* Meta cross-filter (bidirectional, anchor Ad>Adset>Camp) */
-function metaFiltered(){
-  let fL=leadsActive().filter(l=>l.src==='meta'), fM=metaActive();
-  if(STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
-  else if(STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
-  else if(STATE.mSelC.size){ fL=fL.filter(r=>STATE.mSelC.has(r.camp)); fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
-  return {fL,fM};
-}
 
 /* ---------------- generic interactive table ---------------- */
 /* cfg: {id, cols:[{key,label,type,dim?,heat?:'hi'|'lo',cls?}], rows:[{k,cells:{}, raw?}],
@@ -532,30 +525,50 @@ function renderGeral(){
   hbar('gProf', Object.entries(byPr).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>'#1BAF7A', 10);
   // tabela diaria (todos os leads), ultimo dia no topo + heatmap
   const dl=daily(fL,fM).slice().reverse();
-  renderTable({id:'gDaily',
-    cols:[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:70},
-      {key:'gasto',label:'Gasto',type:'brl',heat:'hi'},{key:'leads',label:'Leads',type:'int',heat:'hi'},
-      {key:'cpl',label:'CPL',type:'brl',heat:'lo'},{key:'tx',label:'Tx‑MQL',type:'pct',heat:'hi'},
-      {key:'mqls',label:'MQLs',type:'int',heat:'hi'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'lo'}],
-    rows:dl.map(x=>{const gg=x.sp*taxf(); return {k:x.d, cells:{date:x.d,wd:weekday(x.d),gasto:gg,leads:x.leads,cpl:x.leads?gg/x.leads:null,tx:x.leads?x.mqls/x.leads:null,mqls:x.mqls,cpmql:x.mqls?gg/x.mqls:null}};}),
-    total:(()=>{const gg=t.sp*taxf();return{date:null,wd:'',gasto:gg,leads:t.leads,cpl:t.leads?gg/t.leads:null,tx:t.leads?t.mqls/t.leads:null,mqls:t.mqls,cpmql:t.mqls?gg/t.mqls:null};})(),
+  renderTable({id:'gDaily', cols:DAILY_COLS,
+    rows:dl.map(x=>{const d=derive(x); return {k:x.d, cells:dailyCells(x,d)};}),
+    total:(()=>{const d=derive(t);return dailyCells({d:null,leads:t.leads,mqls:t.mqls},d,true);})(),
     selectable:true, selSet:STATE.selDays,
     onSelect:(k,e)=>{ toggleSet(STATE.selDays,k,e&&(e.ctrlKey||e.metaKey)); syncDateInputs(); renderAll(); },
   });
 }
+/* colunas padrão das tabelas de heatmap por dia (ordem pedida) */
+const DAILY_COLS=[
+  {key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:70},
+  {key:'gasto',label:'Gasto',type:'brl',heat:'hi'},{key:'cpm',label:'CPM',type:'brl',heat:'lo'},
+  {key:'ctr',label:'CTR',type:'pct',heat:'hi'},{key:'convf',label:'ConvForm',type:'pct',heat:'hi'},
+  {key:'leads',label:'Leads',type:'int',heat:'hi'},{key:'cpl',label:'CPL',type:'brl',heat:'lo'},
+  {key:'tx',label:'Tx‑MQL',type:'pct',heat:'hi'},{key:'mqls',label:'MQLs',type:'int',heat:'hi'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'lo'},
+];
+function dailyCells(x,d,isTotal){
+  return {date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d), gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, convf:d.convf,
+    leads:x.leads, cpl:d.cpl, tx:d.tx, mqls:x.mqls, cpmql:d.cpmql};
+}
 
 /* ---------------- PAGE 2: Captura Meta Ads ---------------- */
+function metaScope(ex){ let fL=leadsActive().filter(l=>l.src==='meta'), fM=metaActive();
+  if(ex!=='C'&&STATE.mSelC.size){ fL=fL.filter(r=>STATE.mSelC.has(r.camp)); fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
+  if(ex!=='A'&&STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
+  if(ex!=='D'&&STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
+  return {fL,fM}; }
+/* selecao multipla: Ctrl adiciona (OR) sem sumir as demais linhas; clique simples troca a ancora */
+function selDim(dim,key,ctrl){
+  const sets={C:STATE.mSelC,A:STATE.mSelA,D:STATE.mSelAd}, s=sets[dim];
+  if(ctrl){ s.has(key)?s.delete(key):s.add(key); }
+  else { const sole=s.has(key)&&s.size===1&&!Object.entries(sets).some(([k2,x])=>k2!==dim&&x.size);
+    Object.values(sets).forEach(x=>x.clear()); if(!sole) s.add(key); }
+  renderMeta();
+}
 function renderMeta(){
-  const {fL,fM}=metaFiltered();
+  const F=metaScope(null), fL=F.fL, fM=F.fM;   // KPIs, funil, graficos e tabela diaria
   const t=totals(fL,fM), dv=derive(t), g=dv.gasto;
-  // funil
   const NA='<span class="na-tag">sem dado</span>';
   const steps=[
     ['Gasto Total', brl(g), []],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)],['Frequência',NA]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
-    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvLP',NA]]],
+    ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
     ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]]],
     ['Vendas', NA, [['ConvMQL',NA],['CAC',NA]], true],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
@@ -568,38 +581,32 @@ function renderMeta(){
   const byAd={}; fL.forEach(l=>{byAd[l.ad]=(byAd[l.ad]||0)+1;});
   hbar('mContent', Object.entries(byAd).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>'#3B5BDB', 10);
 
-  // daily table (latest day top)
   const dl=daily(fL,fM).slice().reverse();
-  renderTable({id:'tDaily',
-    cols:[
-      {key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim'},
-      {key:'gasto',label:'Gasto',type:'brl',heat:'hi'},{key:'cpm',label:'CPM',type:'brl',heat:'lo'},
-      {key:'ctr',label:'CTR',type:'pct',heat:'hi'},{key:'cr',label:'CR',type:'dim'},{key:'convlp',label:'ConvLP',type:'dim'},
-      {key:'leads',label:'Leads',type:'int',heat:'hi'},{key:'cpl',label:'CPL',type:'brl',heat:'lo'},
-      {key:'tx',label:'Tx‑MQL',type:'pct',heat:'hi'},{key:'mqls',label:'MQLs',type:'int',heat:'hi'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'lo'}],
-    rows:dl.map(x=>{const d=derive(x); return {k:x.d, cells:{date:x.d,wd:weekday(x.d),gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:x.leads,cpl:d.cpl,tx:d.tx,mqls:x.mqls,cpmql:d.cpmql}};}),
-    total:(()=>{const d=derive(t);return{date:null,wd:'',gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:t.leads,cpl:d.cpl,tx:d.tx,mqls:t.mqls,cpmql:d.cpmql};})(),
+  renderTable({id:'tDaily', cols:DAILY_COLS,
+    rows:dl.map(x=>{const d=derive(x); return {k:x.d, cells:dailyCells(x,d)};}),
+    total:(()=>{const d=derive(t);return dailyCells({d:null,leads:t.leads,mqls:t.mqls},d,true);})(),
     selectable:true, selSet:STATE.selDays,
     onSelect:(k,e)=>{ toggleSet(STATE.selDays,k,e&&(e.ctrlKey||e.metaKey)); syncDateInputs(); renderAll(); },
   });
 
-  // hierarchy tables
+  // hierarquia — cada tabela vem do escopo que exclui a PRÓPRIA dimensão,
+  // então todas as linhas irmãs continuam visíveis para multi-seleção (Ctrl).
   const hcols=[
     {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
-    {key:'ctr',label:'CTR',type:'pct'},{key:'cr',label:'CR',type:'dim'},{key:'convlp',label:'ConvLP',type:'dim'},
+    {key:'ctr',label:'CTR',type:'pct'},{key:'convf',label:'ConvForm',type:'pct'},
     {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
     {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl'},
   ];
   function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a);
-    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql}};}); }
-  const totRow=(()=>{const d=derive(t);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:t.leads,cpl:d.cpl,tx:d.tx,mqls:t.mqls,cpmql:d.cpmql};})();
-  const campMap=buildAgg(fL,fM,'camp'), adsetMap=buildAgg(fL,fM,'adset'), adMap=buildAgg(fL,fM,'ad');
-  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(campMap), total:totRow,
-    selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>{ toggleSet(STATE.mSelC,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelA,STATE.mSelAd]); renderMeta(); }});
-  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(adsetMap), total:totRow,
-    selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>{ toggleSet(STATE.mSelA,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelC,STATE.mSelAd]); renderMeta(); }});
-  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(adMap), total:totRow,
-    selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>{ toggleSet(STATE.mSelAd,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelC,STATE.mSelA]); renderMeta(); }});
+    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql}};}); }
+  function totRowOf(tt){const d=derive(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql};}
+  const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
+  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fL,Sc.fM,'camp')), total:totRowOf(totals(Sc.fL,Sc.fM)),
+    selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
+  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fL,Sa.fM,'adset')), total:totRowOf(totals(Sa.fL,Sa.fM)),
+    selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
+  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fL,Sd.fM,'ad')), total:totRowOf(totals(Sd.fL,Sd.fM)),
+    selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   const dch=daily(fL,fM);
   lineChart('chCamp',dch); lineChart('chAdset',dch); lineChart('chAd',dch);
