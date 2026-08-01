@@ -15,6 +15,12 @@
     --text-primary:#1A1D2E; --accent-blue:#3B5BDB; --accent-blue-light:#EEF2FF; --selected:#DBEAFE;
     --bg:#F4F5F8; --surface:#FFFFFF; --border:#E6E8EE; --muted:#6B7280; --ink:#1A1D2E;
     --good:#0CA30C; --bad:#E34948; --yellow:#E8A400; --aqua:#1BAF7A; --red:#E34948; --black:#1A1D2E;
+    --grid:#EEF0F5; --thead:#F5F7FB; --tfoot:#EEF1F7;
+  }
+  :root[data-theme="dark"]{
+    --text-primary:#0A0C11; --accent-blue:#5B7BF0; --accent-blue-light:#1B2440; --selected:#26365F;
+    --bg:#0F1117; --surface:#171A22; --border:#2A2F3A; --muted:#9AA1AD; --ink:#F2F3F5;
+    --grid:#252A34; --thead:#1E222C; --tfoot:#1B1F27;
   }
   *{box-sizing:border-box}
   html,body{margin:0}
@@ -116,10 +122,11 @@
   .tbl-wrap{overflow:auto; position:relative}
   .tbl-normal{max-height:230px}
   .tbl-double{max-height:420px}
-  table.dt{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px; table-layout:fixed}
+  table.dt{border-collapse:separate; border-spacing:0; min-width:100%; font-size:12.5px; table-layout:fixed}
   table.dt th, table.dt td{padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden}
-  table.dt thead th{position:sticky; top:0; z-index:2; background:#f8f9fc; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:right; cursor:pointer; user-select:none}
-  table.dt thead th .rsz{position:absolute; right:0; top:0; width:6px; height:100%; cursor:col-resize}
+  table.dt thead th{position:sticky; top:0; z-index:2; background:var(--thead); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:right; cursor:pointer; user-select:none}
+  table.dt thead th .rsz{position:absolute; right:0; top:0; width:9px; height:100%; cursor:col-resize; z-index:3}
+  table.dt thead th .rsz:hover{background:var(--accent-blue); opacity:.5}
   table.dt th.dim, table.dt td.dim{text-align:left; white-space:normal; word-break:break-word; min-width:0}
   table.dt td{text-align:right; font-variant-numeric:tabular-nums}
   table.dt td.dim{font-weight:500}
@@ -128,7 +135,7 @@
   table.dt tbody tr{cursor:pointer}
   table.dt tbody tr:hover{background:var(--accent-blue-light)}
   table.dt tbody tr.sel{background:var(--selected)}
-  table.dt tfoot td{position:sticky; bottom:0; background:#eef1f7; font-weight:700; border-top:2px solid var(--border); text-align:right}
+  table.dt tfoot td{position:sticky; bottom:0; background:var(--tfoot); font-weight:700; border-top:2px solid var(--border); text-align:right}
   table.dt tfoot td.dim{text-align:left}
   .tag-q{color:var(--good); font-weight:700}
   .pair-chart{border-top:1px solid var(--border); padding:8px 10px 4px; height:150px; position:relative}
@@ -164,6 +171,7 @@
       <div class="presets" id="presets"></div>
       <div class="sep"></div>
       <div class="tax-toggle" id="taxToggle"><div class="toggle-track"><div class="toggle-thumb"></div></div><span class="toggle-label">Imposto Meta ×1,13806</span></div>
+      <button class="btn" id="themeBtn" title="Alternar tema claro/escuro">◐ Tema</button>
       <div class="spacer"></div>
       <div class="updated" id="updated"></div>
       <button class="btn primary" id="refreshBtn"><span class="spin">↻</span> Atualizar Dados</button>
@@ -183,9 +191,21 @@
           <div>
             <h2 class="sec-title">Gráficos</h2>
             <div class="card"><h3>Evolução diária</h3><p class="hint">Gasto (linha vermelha) · Leads e MQLs (barras) · CPL (linha preta) · CPMQL (linha amarela)</p><div class="chart-box"><canvas id="gCombo"></canvas></div></div>
-            <div class="card" style="margin-top:16px"><h3>Leads por origem (utm_source)</h3><p class="hint">Todos os leads no período</p><div class="chart-box"><canvas id="gSource"></canvas></div></div>
-            <div class="card" style="margin-top:16px"><h3>Leads por faixa de faturamento</h3><p class="hint">Água = qualificado (≥30 mil) · cinza = não</p><div class="chart-box"><canvas id="gBucket"></canvas></div></div>
+            <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:16px">
+              <div class="card"><h3>Leads por origem (utm_source)</h3><p class="hint">Todos os leads no período</p><div class="chart-box chart-sm"><canvas id="gSource"></canvas></div></div>
+              <div class="card"><h3>Leads por faixa de faturamento</h3><p class="hint">Água = qualificado (≥30 mil) · cinza = não</p><div class="chart-box chart-sm"><canvas id="gBucket"></canvas></div></div>
+            </div>
+            <div class="grid" style="grid-template-columns:1fr 1fr; margin-top:16px">
+              <div class="card"><h3>Leads por plataforma</h3><p class="hint">Instagram / Facebook / Orgânico</p><div class="chart-box chart-sm"><canvas id="gPlat"></canvas></div></div>
+              <div class="card"><h3>Leads por profissão</h3><p class="hint">Top respostas</p><div class="chart-box chart-sm"><canvas id="gProf"></canvas></div></div>
+            </div>
           </div>
+        </div>
+
+        <h2 class="sec-title">Resultados gerais por dia (todos os leads)</h2>
+        <div class="card" style="padding:0">
+          <div class="tbl-wrap tbl-normal"><table class="dt" id="gDaily"></table></div>
+          <p class="note" style="padding:10px 15px">Heatmap por coluna · último dia no topo · considera <b>todos os leads</b> (Meta + orgânico) e o gasto total. Clique numa data para filtrar a página.</p>
         </div>
       </div>
 
@@ -323,8 +343,14 @@ function metaFiltered(){
 /* ---------------- generic interactive table ---------------- */
 /* cfg: {id, cols:[{key,label,type,dim?,heat?:'hi'|'lo',cls?}], rows:[{k,cells:{}, raw?}],
         total:{}, selectable, selSet, onSelect } */
+function colWidth(cfg,c){ const saved=(STATE.colw[cfg.id]||{})[c.key];
+  if(saved) return saved;
+  if(c.w) return c.w;
+  if(c.type==='date') return 96;
+  if(c.type==='dim') return c.big?360:150;
+  return 92; }
 function renderTable(cfg){
-  const table=document.getElementById(cfg.id);
+  const table=document.getElementById(cfg.id); if(!table) return;
   const sortState=STATE.sort[cfg.id];
   let rows=cfg.rows.slice();
   if(sortState){ const {key,dir}=sortState; const c=cfg.cols.find(x=>x.key===key);
@@ -332,14 +358,14 @@ function renderTable(cfg){
       if(c && c.type==='dim'){ va=norm(va); vb=norm(vb); return dir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0); }
       va=(va==null||!isFinite(va))?-Infinity:va; vb=(vb==null||!isFinite(vb))?-Infinity:vb;
       return dir==='asc'?va-vb:vb-va; }); }
-  // heat extents
   const ext={};
   cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
   const fmt=(t,v)=> t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):dimf(v);
-  const w=k=>{ const s=(STATE.colw[cfg.id]||{})[k]; return s?` style="width:${s}px"`:''; };
-  let thead='<thead><tr>'+cfg.cols.map(c=>{
+  const widths=cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
+  const colgroup='<colgroup>'+cfg.cols.map((c,i)=>`<col style="width:${widths[i]}px">`).join('')+'</colgroup>';
+  let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
     const sc = sortState&&sortState.key===c.key ? (sortState.dir==='asc'?'sorted-asc':'sorted-desc') : '';
-    return `<th class="${c.type==='dim'?'dim ':''}${sc}" data-k="${c.key}"${w(c.key)}>${c.label}<span class="rsz"></span></th>`;
+    return `<th class="${c.type==='dim'?'dim ':''}${sc}" data-k="${c.key}" data-ci="${i}">${c.label}<span class="rsz"></span></th>`;
   }).join('')+'</tr></thead>';
   let tbody='<tbody>'+rows.map(r=>{
     const sel = cfg.selectable && cfg.selSet && cfg.selSet.has(r.k);
@@ -355,7 +381,9 @@ function renderTable(cfg){
   if(cfg.total){ tfoot='<tfoot><tr>'+cfg.cols.map((c,i)=>{
     const v=cfg.total[c.key]; return `<td class="${c.type==='dim'?'dim':''}">${i===0?(v==null?'Total Geral':fmt(c.type,v)):fmt(c.type,v)}</td>`;
   }).join('')+'</tr></tfoot>'; }
-  table.innerHTML=thead+tbody+tfoot;
+  table.style.width=totalW+'px';
+  table.innerHTML=colgroup+thead+tbody+tfoot;
+  const cols=table.querySelector('colgroup').children;
   // sort handlers
   table.querySelectorAll('thead th').forEach(th=>{
     th.addEventListener('click',e=>{ if(e.target.classList.contains('rsz'))return;
@@ -366,13 +394,15 @@ function renderTable(cfg){
       renderTable(cfg);
     });
   });
-  // resize handlers
+  // resize handlers (drag right border) -> resize the <col>, grow the table
   table.querySelectorAll('thead th .rsz').forEach(g=>{
     g.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation();
-      const th=g.parentElement, k=th.dataset.k, x0=e.clientX, w0=th.offsetWidth;
-      const mv=ev=>{ const nw=Math.max(60,w0+(ev.clientX-x0)); th.style.width=nw+'px';
+      const th=g.parentElement, k=th.dataset.k, ci=+th.dataset.ci, x0=e.clientX;
+      const w0=cols[ci].offsetWidth, tw0=table.offsetWidth;
+      document.body.style.userSelect='none';
+      const mv=ev=>{ const nw=Math.max(60,w0+(ev.clientX-x0)); cols[ci].style.width=nw+'px'; table.style.width=(tw0-w0+nw)+'px';
         STATE.colw[cfg.id]=STATE.colw[cfg.id]||{}; STATE.colw[cfg.id][k]=nw; };
-      const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); localStorage.setItem('dm_colw',JSON.stringify(STATE.colw)); };
+      const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); document.body.style.userSelect=''; localStorage.setItem('dm_colw',JSON.stringify(STATE.colw)); };
       document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
     });
   });
@@ -398,54 +428,52 @@ function toggleSet(set,key,ctrl,others){
 
 /* ---------------- charts ---------------- */
 const charts={};
+const cvar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const cmuted=()=>cvar('--muted')||'#6B7280', cink=()=>cvar('--ink')||'#1A1D2E', cgrid=()=>cvar('--grid')||'#EEF0F5';
 function destroy(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
-function axes(){ const grid='#EceEF3'; return {
-  x:{ticks:{color:'#6B7280',font:{size:10}},grid:{display:false}},
-  y:{ticks:{color:'#6B7280',font:{size:10}},grid:{color:'#EEF0F5'},beginAtZero:true},
-}; }
 function comboChart(id, d){
-  destroy(id);
-  const labels=d.map(x=>x.d.slice(5));
-  charts[id]=new Chart(document.getElementById(id),{
+  destroy(id); const el=document.getElementById(id); if(!el) return;
+  const labels=d.map(x=>x.d.slice(5)), mut=cmuted(), gr=cgrid();
+  charts[id]=new Chart(el,{
     data:{labels, datasets:[
       {type:'bar',label:'Leads',data:d.map(x=>x.leads),backgroundColor:'#3B5BDB',yAxisID:'y',borderRadius:3,order:3},
       {type:'bar',label:'MQLs',data:d.map(x=>x.mqls),backgroundColor:'#1BAF7A',yAxisID:'y',borderRadius:3,order:3},
       {type:'line',label:'Gasto',data:d.map(x=>+(x.sp*taxf()).toFixed(2)),borderColor:'#E34948',backgroundColor:'#E34948',yAxisID:'y1',borderWidth:2,pointRadius:2,tension:.25,order:1},
-      {type:'line',label:'CPL',data:d.map(x=>x.leads?+((x.sp*taxf())/x.leads).toFixed(2):null),borderColor:'#1A1D2E',backgroundColor:'#1A1D2E',yAxisID:'y1',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:0},
+      {type:'line',label:'CPL',data:d.map(x=>x.leads?+((x.sp*taxf())/x.leads).toFixed(2):null),borderColor:cink(),backgroundColor:cink(),yAxisID:'y1',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:0},
       {type:'line',label:'CPMQL',data:d.map(x=>x.mqls?+((x.sp*taxf())/x.mqls).toFixed(2):null),borderColor:'#E8A400',backgroundColor:'#E8A400',yAxisID:'y1',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25,order:0},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{labels:{color:'#1A1D2E',boxWidth:10,usePointStyle:true,font:{size:11}}},
+      plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:11}}},
         tooltip:{callbacks:{label:c=>{const v=c.raw; return c.dataset.label+': '+(c.dataset.yAxisID==='y1'?brl(v):intf(v));}}}},
-      scales:{x:{ticks:{color:'#6B7280',font:{size:10}},grid:{display:false}},
-        y:{position:'left',ticks:{color:'#6B7280',font:{size:10}},grid:{color:'#EEF0F5'},beginAtZero:true,title:{display:true,text:'Leads / MQLs',color:'#6B7280',font:{size:10}}},
-        y1:{position:'right',ticks:{color:'#6B7280',font:{size:10}},grid:{display:false},beginAtZero:true,title:{display:true,text:'R$',color:'#6B7280',font:{size:10}}}}}
+      scales:{x:{ticks:{color:mut,font:{size:10}},grid:{display:false}},
+        y:{position:'left',ticks:{color:mut,font:{size:10}},grid:{color:gr},beginAtZero:true,title:{display:true,text:'Leads / MQLs',color:mut,font:{size:10}}},
+        y1:{position:'right',ticks:{color:mut,font:{size:10}},grid:{display:false},beginAtZero:true,title:{display:true,text:'R$',color:mut,font:{size:10}}}}}
   });
 }
 function hbar(id, items, valFn, colorFn, top){
-  destroy(id);
+  destroy(id); const el=document.getElementById(id); if(!el) return;
   let arr=items.slice().sort((a,b)=>valFn(b)-valFn(a)); if(top) arr=arr.slice(0,top);
-  charts[id]=new Chart(document.getElementById(id),{type:'bar',
-    plugins:[barLabels],
+  const mut=cmuted();
+  charts[id]=new Chart(el,{type:'bar', plugins:[barLabels],
     data:{labels:arr.map(x=>x.label), datasets:[{label:'Leads',data:arr.map(valFn),backgroundColor:arr.map(colorFn||(()=>'#3B5BDB')),borderRadius:3}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:28}},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>intf(c.raw)+' leads'}}},
-      scales:{x:{beginAtZero:true,ticks:{color:'#6B7280',precision:0,font:{size:10}},grid:{color:'#EEF0F5'}},
-              y:{ticks:{color:'#6B7280',font:{size:10}},grid:{display:false}}}}});
+      scales:{x:{beginAtZero:true,ticks:{color:mut,precision:0,font:{size:10}},grid:{color:cgrid()}},
+              y:{ticks:{color:mut,font:{size:10}},grid:{display:false}}}}});
 }
-const barLabels={id:'barLabels',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();ctx.font='600 11px Segoe UI,system-ui';ctx.fillStyle='#6B7280';ctx.textBaseline='middle';
+const barLabels={id:'barLabels',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();ctx.font='600 11px Segoe UI,system-ui';ctx.fillStyle=cmuted();ctx.textBaseline='middle';
   ch.getDatasetMeta(0).data.forEach((el,i)=>{const v=ch.data.datasets[0].data[i]; if(!v)return; ctx.fillText(intf(v),el.x+5,el.y);});ctx.restore();}};
 function lineChart(id, d){
-  destroy(id);
-  const labels=d.map(x=>x.d.slice(5));
-  charts[id]=new Chart(document.getElementById(id),{type:'line',
+  destroy(id); const el=document.getElementById(id); if(!el) return;
+  const labels=d.map(x=>x.d.slice(5)), mut=cmuted();
+  charts[id]=new Chart(el,{type:'line',
     data:{labels,datasets:[
       {label:'CPMQL',data:d.map(x=>x.mqls?+((x.sp*taxf())/x.mqls).toFixed(2):null),borderColor:'#E8A400',backgroundColor:'#E8A400',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25},
-      {label:'CPL',data:d.map(x=>x.leads?+((x.sp*taxf())/x.leads).toFixed(2):null),borderColor:'#1A1D2E',backgroundColor:'#1A1D2E',borderWidth:2,pointRadius:2,spanGaps:true,tension:.25},
+      {label:'CPL',data:d.map(x=>x.leads?+((x.sp*taxf())/x.leads).toFixed(2):null),borderColor:cink(),backgroundColor:cink(),borderWidth:2,pointRadius:2,spanGaps:true,tension:.25},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{labels:{color:'#1A1D2E',boxWidth:10,usePointStyle:true,font:{size:10}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+brl(c.raw)}}},
-      scales:{x:{ticks:{color:'#6B7280',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#6B7280',font:{size:9}},grid:{color:'#EEF0F5'},beginAtZero:true}}}});
+      plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:10}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+brl(c.raw)}}},
+      scales:{x:{ticks:{color:mut,font:{size:9}},grid:{display:false}},y:{ticks:{color:mut,font:{size:9}},grid:{color:cgrid()},beginAtZero:true}}}});
 }
 
 /* ---------------- KPI cards ---------------- */
@@ -495,6 +523,25 @@ function renderGeral(){
   const order=['Menos de 5 mil','Entre 5 a 10 mil','Entre 10 a 20 mil','Entre 20 a 30 mil','Entre 30 a 50 mil','Entre 50 a 100 mil','Mais de 100 mil','Sem resposta'];
   const bArr=Object.values(byB).sort((a,b)=>order.indexOf(a.label)-order.indexOf(b.label));
   hbar('gBucket', bArr, x=>x.leads, x=>x.q?'#1BAF7A':'#B3B1A8');
+  // por plataforma
+  const platName={ig:'Instagram',fb:'Facebook','—':'Orgânico/—'};
+  const byP={}; fL.forEach(l=>{const k=platName[l.plat]||l.plat; byP[k]=(byP[k]||0)+1;});
+  hbar('gPlat', Object.entries(byP).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>'#3B5BDB');
+  // por profissao (top 10)
+  const byPr={}; fL.forEach(l=>{byPr[l.prof]=(byPr[l.prof]||0)+1;});
+  hbar('gProf', Object.entries(byPr).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>'#1BAF7A', 10);
+  // tabela diaria (todos os leads), ultimo dia no topo + heatmap
+  const dl=daily(fL,fM).slice().reverse();
+  renderTable({id:'gDaily',
+    cols:[{key:'date',label:'Data',type:'date'},{key:'wd',label:'Dia',type:'dim',w:70},
+      {key:'gasto',label:'Gasto',type:'brl',heat:'hi'},{key:'leads',label:'Leads',type:'int',heat:'hi'},
+      {key:'cpl',label:'CPL',type:'brl',heat:'lo'},{key:'tx',label:'Tx‑MQL',type:'pct',heat:'hi'},
+      {key:'mqls',label:'MQLs',type:'int',heat:'hi'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'lo'}],
+    rows:dl.map(x=>{const gg=x.sp*taxf(); return {k:x.d, cells:{date:x.d,wd:weekday(x.d),gasto:gg,leads:x.leads,cpl:x.leads?gg/x.leads:null,tx:x.leads?x.mqls/x.leads:null,mqls:x.mqls,cpmql:x.mqls?gg/x.mqls:null}};}),
+    total:(()=>{const gg=t.sp*taxf();return{date:null,wd:'',gasto:gg,leads:t.leads,cpl:t.leads?gg/t.leads:null,tx:t.leads?t.mqls/t.leads:null,mqls:t.mqls,cpmql:t.mqls?gg/t.mqls:null};})(),
+    selectable:true, selSet:STATE.selDays,
+    onSelect:(k,e)=>{ toggleSet(STATE.selDays,k,e&&(e.ctrlKey||e.metaKey)); syncDateInputs(); renderAll(); },
+  });
 }
 
 /* ---------------- PAGE 2: Captura Meta Ads ---------------- */
@@ -538,19 +585,18 @@ function renderMeta(){
 
   // hierarchy tables
   const hcols=[
-    {key:'dim',label:'',type:'dim'},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
+    {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
     {key:'ctr',label:'CTR',type:'pct'},{key:'cr',label:'CR',type:'dim'},{key:'convlp',label:'ConvLP',type:'dim'},
     {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
     {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl'},
   ];
-  function hierRows(map, shortDim){ return Object.entries(map).map(([k,a])=>{const d=derive(a);
-    return {k, cells:{dim:shortDim?shortDim(k):k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql}};}); }
+  function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a);
+    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql}};}); }
   const totRow=(()=>{const d=derive(t);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,cr:'-',convlp:'-',leads:t.leads,cpl:d.cpl,tx:d.tx,mqls:t.mqls,cpmql:d.cpmql};})();
   const campMap=buildAgg(fL,fM,'camp'), adsetMap=buildAgg(fL,fM,'adset'), adMap=buildAgg(fL,fM,'ad');
-  const shortC=k=>{const p=String(k).split('|').map(s=>s.trim()); const tag=p.find(s=>/E\d-\w+/.test(s)); return (tag&&tag!==p[0])?p[0]+' · '+tag:String(k);};
-  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(campMap,shortC), total:totRow,
+  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(campMap), total:totRow,
     selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>{ toggleSet(STATE.mSelC,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelA,STATE.mSelAd]); renderMeta(); }});
-  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto'}:c), rows:hierRows(adsetMap), total:totRow,
+  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(adsetMap), total:totRow,
     selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>{ toggleSet(STATE.mSelA,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelC,STATE.mSelAd]); renderMeta(); }});
   renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(adMap), total:totRow,
     selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>{ toggleSet(STATE.mSelAd,k,e&&(e.ctrlKey||e.metaKey),[STATE.mSelC,STATE.mSelA]); renderMeta(); }});
@@ -563,8 +609,8 @@ function renderMeta(){
   document.getElementById('qCount').textContent=q.length+' leads';
   renderTable({id:'tQual',
     cols:[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'},{key:'prof',label:'Profissão',type:'dim'},
-      {key:'bucket',label:'Faixa',type:'dim'},{key:'camp',label:'Campanha',type:'dim'},{key:'em',label:'E‑mail',type:'dim'},{key:'ph',label:'Telefone',type:'dim'}],
-    rows:q.map((l,i)=>({k:'q'+i, cells:{d:l.d,nm:l.nm,prof:l.prof,bucket:l.bucket,camp:shortC(l.camp),em:l.em,ph:l.ph}}))});
+      {key:'bucket',label:'Faixa',type:'dim'},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200},{key:'ph',label:'Telefone',type:'dim',w:110}],
+    rows:q.map((l,i)=>({k:'q'+i, cells:{d:l.d,nm:l.nm,prof:l.prof,bucket:l.bucket,camp:l.camp,em:l.em,ph:l.ph}}))});
 }
 
 /* ---------------- date presets ---------------- */
@@ -598,6 +644,10 @@ function setPage(p){ STATE.page=p;
   renderAll();
 }
 function renderAll(){ if(STATE.page==='meta') renderMeta(); else renderGeral(); }
+
+function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
+applyTheme();
+document.getElementById('themeBtn').addEventListener('click',()=>{ const dark=document.documentElement.getAttribute('data-theme')==='dark'; localStorage.setItem('dm_theme',dark?'light':'dark'); applyTheme(); renderAll(); });
 
 document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>setPage(n.dataset.page)));
 document.getElementById('taxToggle').addEventListener('click',function(){ STATE.tax=!STATE.tax; this.classList.toggle('on',STATE.tax); renderAll(); });
