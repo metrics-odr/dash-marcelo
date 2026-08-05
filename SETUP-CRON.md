@@ -11,7 +11,7 @@ Na **primeira execução** o próprio workflow **habilita o GitHub Pages**
 automaticamente (`actions/configure-pages` com `enablement: true`). Depois de rodar
 uma vez, a página fica no ar em:
 
-**https://eduardomezzavilla.github.io/dash-marcelo/**
+**https://metrics-odr.github.io/dash-marcelo/**
 
 Se preferir disparar a primeira execução na mão: aba **Actions** → *Build & Deploy
 Dashboard* → **Run workflow**.
@@ -32,7 +32,7 @@ Crie um job e preencha **exatamente** (um valor por vez):
 
 ### URL
 ```
-https://api.github.com/repos/eduardomezzavilla/dash-marcelo/actions/workflows/deploy.yml/dispatches
+https://api.github.com/repos/metrics-odr/dash-marcelo/actions/workflows/deploy.yml/dispatches
 ```
 
 ### Método (Request method)

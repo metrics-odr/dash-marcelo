@@ -11,7 +11,7 @@ puro + Chart.js via CDN) publicado no **GitHub Pages**, que cruza a lista de
 **Leads** com o gerenciador **Meta Ads** e se atualiza sozinho a cada ~30 min
 (build 100% na nuvem via GitHub Actions, disparado externamente pelo cron-job.org).
 
-- **URL pública:** https://eduardomezzavilla.github.io/dash-marcelo/
+- **URL pública:** https://metrics-odr.github.io/dash-marcelo/
 - **Somente leitura** das planilhas. Nunca escrever de volta.
 
 ## Fontes de dados (Google Sheets — "BTBExp | Planilha Central")
