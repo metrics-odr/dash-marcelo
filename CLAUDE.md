@@ -41,13 +41,25 @@ CPM, CPMQL, CAC…). Constante `TAX_FACTOR` em `build.py` e `TAX` no template.
 ## Arquitetura / arquivos
 
 ```
-build/build.py        # lê os 2 CSVs (read-only), emite REGISTROS BRUTOS (leads[]/meta[]) no HTML
-build/template.html   # o app inteiro: CSS + JS. Placeholders __DATA_JSON__, __BUILD_ID__, __GENERATED_BRT__
+build/build.py            # lê os 2 CSVs (read-only), emite REGISTROS BRUTOS (leads[]/meta[]); render() COSTURA os 4 arquivos abaixo
+build/template.html       # esqueleto HTML. Placeholders __STYLES__, __APP_JS__, __DATA_JSON__, __BUILD_ID__, __GENERATED_BRT__
+build/identidade-visual.css  # TODAS as cores (tema claro=padrão / escuro). Mexa AQUI p/ trocar só cor
+build/estilos.css         # layout/componentes (sidebar, topbar, period-picker, funil, tabelas, gráficos)
+build/app.js              # lógica + renderização (KPIs, funil, tabelas, filtro cruzado, period-picker, heatmap)
 .github/workflows/deploy.yml  # roda build.py e publica no Pages (workflow_dispatch + schedule + push)
-dist/index.html       # saída gerada (gitignored; o Actions reconstrói)
-GUIA-REPLICACAO.md    # como replicar este modelo para outros relatórios
-SETUP-CRON.md         # valores exatos do cron-job.org
+dist/index.html           # saída gerada (gitignored; o Actions reconstrói)
+GUIA-REPLICACAO.md        # como replicar este modelo para outros relatórios
+SETUP-CRON.md             # valores exatos do cron-job.org
 ```
+
+> **Layout modular (repaginação inspirada no dash da Larissa/Código da Rainha):** o front-end
+> foi separado em `identidade-visual.css` + `estilos.css` + `app.js`, costurados por `render()`
+> nos placeholders `__STYLES__`/`__APP_JS__`. Página 1 usa **funil vertical de leads** (Gasto →
+> Impressões → Cliques → Leads → MQLs → Vendas/Faturamento "-") + KPIs secundários. Topbar tem
+> **seletor de período em calendário** (period-picker) no lugar dos chips. **Heatmap** das tabelas
+> diárias = cor FIXA por métrica (só opacidade varia): **Gasto=vermelho · Leads=azul · MQLs=verde**
+> (`--heat-gasto/leads/mqls`), aplicado só nessas 3 colunas. A estrutura de dados e os nomes das
+> métricas do Marcelo foram **preservados** — só o layout/visual mudou.
 
 O `build.py` **não agrega**: exporta as linhas cruas e TODA a lógica (filtros de
 data, filtro cruzado, KPIs, tabelas, gráficos, heatmap, imposto) roda no navegador.
@@ -67,11 +79,11 @@ em `/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`.
 ## Especificação funcional (resumo das regras do cliente)
 
 Duas **páginas separadas** (sidebar, sem rolar entre elas):
-1. **Visão Geral de Leads** — KPIs nível 1 (Gasto, Leads, CPL, MQLs, CPMQL, Tx‑MQL,
-   Vendas/CAC/Faturamento/ROAS = "-") + nível 2 (Leads/MQLs Ads, Impressões, Cliques,
-   CTR, CPC, CPM, Leads s/UTM, % Eficácia, Orgânicos, Org:Ads); gráfico combinado
-   diário; barras por origem/faixa/plataforma/profissão; **tabela diária com heatmap
-   (todos os leads)**.
+1. **Visão Geral de Leads** — **funil vertical** (Gasto → Impressões → Cliques → Leads →
+   MQLs → Vendas/Faturamento = "-", com CPM/CTR/CPC/CPL/ConvForm/Tx‑MQL/CPMQL inline) +
+   **KPIs secundários** (Leads/MQLs Ads, Tx‑MQL Ads, Impressões, Cliques, CPM, Leads s/UTM,
+   % Eficácia, Orgânicos, Org:Ads); gráfico combinado diário colado à **tabela diária com
+   heatmap (todos os leads)**; barras por origem/faixa/plataforma/profissão.
 2. **Captura Meta Ads** — funil em etapas; combinado diário; barras por utm_content;
    **tabela diária com heatmap (só Meta)**; **3 tabelas hierárquicas** Campanha →
    Conjunto → Anúncio, cada uma com **gráfico de linha colado embaixo**.
@@ -85,8 +97,9 @@ ordenação tri‑state (asc→desc→reset); colunas redimensionáveis (persist
 linha "Total Geral" fixa; dimensão nunca truncada (400/250/600px, wrap, ≥11px);
 seleção com toggle + **Ctrl multi (Set/OR)**; **filtro cruzado bidirecional** com
 âncora Anúncio>Conjunto>Campanha, reconstruindo tudo da fonte filtrada; tabela diária
-com **último dia no topo**. Heatmap "maior melhor": Gasto, CTR, ConvForm, Leads,
-Tx‑MQL, MQLs; "menor melhor": CPM, CPL, CPMQL, CPC.
+com **último dia no topo**. **Heatmap de cor fixa por métrica** (só a opacidade varia,
+maior valor = mais vibrante), aplicado apenas em **Gasto (vermelho) · Leads (azul) ·
+MQLs (verde)** — cores em `--heat-gasto/leads/mqls`. As demais colunas ficam sem heatmap.
 
 ## Lacunas de dados (aguardando o cliente)
 - **Vendas, Faturamento, ROAS, CAC** → precisam da aba **Lista de Compradores** (gid a informar), com utm_source/produto.
