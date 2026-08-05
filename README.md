@@ -5,7 +5,7 @@ Dashboard **100% na nuvem** que cruza a lista de **Leads** com o investimento de
 Reconstrói sozinha a cada ~30 min, disparada pelo **cron-job.org** — sem depender
 de nenhum PC ligado.
 
-**URL pública:** https://eduardomezzavilla.github.io/dash-marcelo/
+**URL pública:** https://metrics-odr.github.io/dash-marcelo/
 
 ---
 
