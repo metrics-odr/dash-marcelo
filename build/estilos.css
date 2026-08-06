@@ -97,7 +97,11 @@
   .grid{display:grid; gap:16px}
   .two-col{grid-template-columns:380px 1fr}
   .three-col{grid-template-columns:360px 1fr}
-  .funnel-grid{grid-template-columns:340px 1fr; align-items:start}
+  .funnel-grid{grid-template-columns:340px 1fr; align-items:stretch}
+  /* funil (esquerda) acompanha a altura do painel gráfico+tabela (direita) */
+  .funnel-grid > .card{display:flex; flex-direction:column}
+  .funnel-grid > .card > .funnel{flex:0 0 auto}
+  .funnel-grid > .card > .note{margin-top:auto; padding-top:10px}
   .funnel-charts{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start}
   /* Mar02: três colunas de tamanho igual · Mar05: quatro gráficos na mesma linha */
   .trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; align-items:stretch}
@@ -119,6 +123,15 @@
   .panel .panel-chart{padding:16px 16px 6px}
   .panel .panel-chart h3{margin:0 0 2px; font-size:14px}
   .panel .panel-chart .hint{font-size:12px; color:var(--muted); margin:0 0 8px}
+
+  /* painel dividido 50/50: metade gráfico, metade tabela diária, no mesmo card */
+  .panel.panel-split{display:flex; flex-direction:column; height:560px}
+  .panel.panel-split > .panel-chart{flex:0 0 50%; min-height:0; display:flex; flex-direction:column}
+  .panel.panel-split > .panel-chart .chart-box{flex:1 1 auto; min-height:0; height:auto}
+  .panel.panel-split > .panel-table{flex:0 0 50%; min-height:0; display:flex; flex-direction:column; border-top:1px solid var(--border)}
+  .panel.panel-split > .panel-table .tbl-wrap{flex:1 1 auto; min-height:0; max-height:none}
+  .panel.panel-split > .panel-table .note{flex:0 0 auto; margin:0; padding:8px 15px}
+  @media(max-width:1200px){.panel.panel-split{height:640px}}
 
   /* KPIs */
   .kpis{display:grid; gap:12px}

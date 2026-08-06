@@ -77,9 +77,13 @@ SETUP-CRON.md             # valores exatos do cron-job.org
 > - Distribuição de leads em **1 linha** (`.row4`); KPIs secundários trocados por métricas analíticas
 >   (MQLs/dia, melhor CPMQL, top anúncio, concentração, ativos) em vez de repetir o funil.
 > - **Tabelas largas cabem 100% (sem scroll lateral)** via `cfg.fit`/`.dt-fit` (largura 100%, colunas
->   numéricas uniformes, dimensão quebra linha, R$ omitido nas células — cabeçalho já indica). As
->   tabelas **diárias saíram do painel** e viraram seções **full-width** próprias. Trio (`.trio`)
->   com os 3 cards de **altura igual** (`align-items:stretch` + conteúdo flex).
+>   numéricas uniformes, dimensão quebra linha, R$ omitido nas células — cabeçalho já indica). Trio
+>   (`.trio`) com os 3 cards de **altura igual** (`align-items:stretch` + conteúdo flex).
+> - **Tabela diária de volta no mesmo card do gráfico** (`.panel.panel-split`): o painel "Evolução
+>   diária"/"Combinação diária" divide **50/50** (altura) entre gráfico e tabela `dt-fit` (que já
+>   cabe 100% da largura sem scroll lateral, então o card mais estreito não é problema). O card do
+>   **funil** (à esquerda, em `.funnel-grid`) usa `align-items:stretch` para **acompanhar a mesma
+>   altura** do painel ao lado — nota do funil vai para o rodapé do card (`margin-top:auto`).
 
 O `build.py` **não agrega**: exporta as linhas cruas e TODA a lógica (filtros de
 data, filtro cruzado, KPIs, tabelas, gráficos, heatmap, imposto) roda no navegador.
