@@ -76,6 +76,10 @@ SETUP-CRON.md             # valores exatos do cron-job.org
 >   fontes (pronto p/ google/tiktok/orgânico); hoje só há Meta.
 > - Distribuição de leads em **1 linha** (`.row4`); KPIs secundários trocados por métricas analíticas
 >   (MQLs/dia, melhor CPMQL, top anúncio, concentração, ativos) em vez de repetir o funil.
+> - **Tabelas largas cabem 100% (sem scroll lateral)** via `cfg.fit`/`.dt-fit` (largura 100%, colunas
+>   numéricas uniformes, dimensão quebra linha, R$ omitido nas células — cabeçalho já indica). As
+>   tabelas **diárias saíram do painel** e viraram seções **full-width** próprias. Trio (`.trio`)
+>   com os 3 cards de **altura igual** (`align-items:stretch` + conteúdo flex).
 
 O `build.py` **não agrega**: exporta as linhas cruas e TODA a lógica (filtros de
 data, filtro cruzado, KPIs, tabelas, gráficos, heatmap, imposto) roda no navegador.
