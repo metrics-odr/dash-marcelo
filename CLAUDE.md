@@ -76,10 +76,29 @@ SETUP-CRON.md             # valores exatos do cron-job.org
 >   fontes (pronto p/ google/tiktok/orgânico); hoje só há Meta.
 > - Distribuição de leads em **1 linha** (`.row4`); KPIs secundários trocados por métricas analíticas
 >   (MQLs/dia, melhor CPMQL, top anúncio, concentração, ativos) em vez de repetir o funil.
-> - **Tabelas largas cabem 100% (sem scroll lateral)** via `cfg.fit`/`.dt-fit` (largura 100%, colunas
->   numéricas uniformes, dimensão quebra linha, R$ omitido nas células — cabeçalho já indica). As
->   tabelas **diárias saíram do painel** e viraram seções **full-width** próprias. Trio (`.trio`)
->   com os 3 cards de **altura igual** (`align-items:stretch` + conteúdo flex).
+> - **Tabelas diárias cabem 100% (sem scroll lateral)** via `cfg.fit`/`.dt-fit` (largura 100%, colunas
+>   numéricas uniformes, dimensão quebra linha, R$ omitido nas células — cabeçalho já indica). Ficam
+>   **dentro do `.panel`**, coladas ao gráfico (cada uma com ~metade da altura do painel, ao lado do
+>   funil — `chart-box` 260px / `tbl-normal` 250px). Trio (`.trio`) com os 3 cards de **altura igual**
+>   (`align-items:stretch` + conteúdo flex).
+
+> **Ajustes de tabela (rodada pós-Mar05):**
+> - Tabelas **hierárquicas** (Campanha/Conjunto/Anúncio) e **Leads Qualificados** voltam ao modo
+>   **redimensionável** (não usam `.dt-fit`): a coluna de dimensão calcula a largura automática p/
+>   caber o **nome inteiro por padrão** (`autoDimWidth()`, mede texto via canvas), **nunca quebra
+>   linha** (só corta com "…" se encolhida manualmente), e pode ser **arrastada** ou **duplo-clique
+>   na borda auto-ajusta** ao conteúdo (`autoColWidth()`) — como Google Sheets/Looker Studio. Isso
+>   pode gerar scroll horizontal **contido dentro da própria tabela** quando há muitas colunas — é
+>   esperado (equivalente ao comportamento dessas ferramentas), diferente de scroll na PÁGINA (nunca
+>   aceitável).
+> - Toda célula/cabeçalho ganhou **`title` (tooltip nativo)** com o valor completo — útil quando uma
+>   tabela `.dt-fit` precisa abreviar para caber sem scroll.
+> - **Bug corrigido:** grids com `1fr` puro (`.row4`, `.trio`, `.funnel-charts`, etc.) podiam "vazar"
+>   e criar scroll horizontal na PÁGINA inteira quando um filho tinha conteúdo intrínseco largo (ex.:
+>   rótulo comprido num gráfico de barras) — CSS Grid não limita um item a `1fr` por padrão
+>   (`min-width:auto` do item vence). Fix: todos os grids fracionários usam `minmax(0,1fr)`, e
+>   `.card`/`.chart-box` têm `min-width:0`. Sempre validar `document.documentElement.scrollWidth ===
+>   clientWidth` (sem overflow) ao mexer em qualquer grid/card novo.
 
 O `build.py` **não agrega**: exporta as linhas cruas e TODA a lógica (filtros de
 data, filtro cruzado, KPIs, tabelas, gráficos, heatmap, imposto) roda no navegador.
