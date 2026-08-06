@@ -99,8 +99,13 @@
   .three-col{grid-template-columns:360px 1fr}
   .funnel-grid{grid-template-columns:340px 1fr; align-items:start}
   .funnel-charts{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start}
+  /* Mar02: três colunas de tamanho igual · Mar05: quatro gráficos na mesma linha */
+  .trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; align-items:start}
+  .row4{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; align-content:start}
   @media(max-width:1000px){.two-col,.three-col,.funnel-grid{grid-template-columns:1fr}}
   @media(max-width:1200px){.funnel-charts{grid-template-columns:1fr}}
+  @media(max-width:1200px){.trio{grid-template-columns:1fr} .row4{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.row4{grid-template-columns:1fr}}
   .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px}
   .card h3{margin:0 0 2px; font-size:14px}
   .card .hint{font-size:12px; color:var(--muted); margin:0 0 10px}
@@ -132,6 +137,11 @@
   .funnel{display:flex; flex-direction:column; gap:7px}
   .step{display:flex; align-items:center; justify-content:space-between; gap:14px; row-gap:8px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 15px; border-left:4px solid var(--accent-blue)}
   .step.na{border-left-color:var(--border); opacity:.7}
+  /* Mar01: destaque das etapas MQL (azulado) e Gasto (avermelhado) + fonte mais forte */
+  .step.hl-mql{background:var(--step-mql-bg); border-left-color:var(--step-mql-bd)}
+  .step.hl-gasto{background:var(--step-gasto-bg); border-left-color:var(--step-gasto-bd)}
+  .step.hl-mql .m-val,.step.hl-gasto .m-val{font-size:26px; font-weight:800}
+  .step.hl-mql .m-label,.step.hl-gasto .m-label{font-weight:600; color:var(--ink)}
   .step .step-main{min-width:0}
   .step .m-label{font-size:11.5px; color:var(--muted)}
   .step .m-val{font-size:20px; font-weight:700; letter-spacing:-.02em; white-space:nowrap}
@@ -166,6 +176,14 @@
   table.dt tbody tr.sel{background:var(--selected)}
   table.dt tfoot td{position:sticky; bottom:0; background:var(--tfoot); font-weight:700; border-top:2px solid var(--border); text-align:right}
   table.dt tfoot td.dim{text-align:left}
+  /* Mar01: tabelas diárias com dados centralizados (a dimensão/Dia continua à esquerda) */
+  table.dt.dt-center thead th, table.dt.dt-center td, table.dt.dt-center tfoot td{text-align:center}
+  table.dt.dt-center th.dim, table.dt.dt-center td.dim{text-align:left}
+  /* Donut de taxa de qualificação (Mar02) com rótulo central */
+  .donut-wrap{position:relative; height:190px}
+  .donut-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none}
+  .donut-center .dc-val{font-size:24px; font-weight:800; line-height:1}
+  .donut-center .dc-lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:2px}
   .tag-q{color:var(--good); font-weight:700}
   .pair-chart{border-top:1px solid var(--border); padding:8px 10px 10px; height:190px; display:flex; flex-direction:column}
   .pair-chart .pc-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:0 4px 4px; flex:0 0 auto}

@@ -61,6 +61,22 @@ SETUP-CRON.md             # valores exatos do cron-job.org
 > (`--heat-gasto/leads/mqls`), aplicado só nessas 3 colunas. A estrutura de dados e os nomes das
 > métricas do Marcelo foram **preservados** — só o layout/visual mudou.
 
+> **Ajustes de layout (rodada Mar01–05):**
+> - Etapas **Gasto** (avermelhada) e **MQLs** (azulada) do funil ganham destaque de fundo + fonte
+>   maior/negrito (`.step.hl-gasto`/`.hl-mql`, vars `--step-gasto/mql-bg/bd`).
+> - Tabelas **diárias** (Geral+Meta): dados centralizados (`.dt-center`) e novas colunas
+>   **Vendas · CAC · ROAS · TM**. Tabelas **hierárquicas**: + **ConvMQL · Vendas · CAC · Fat · TM · ROAS**.
+> - **Camada de vendas** centralizada em `salesOf()` — hoje devolve `null` ("-"); quando a aba de
+>   compradores chegar, some `vendas`/`fat` por linha e TODA a UI acende sozinha.
+> - Página 2, seção "Anúncios" em **3 colunas** (`.trio`): MQLs por anúncio · **donut de Tx de
+>   qualificação** (verde=MQL, vermelho=DSQ) · **Top anúncios por CAC**. Gráficos sob as tabelas
+>   hierárquicas viram **MQLs por dimensão (campanha/conjunto/anúncio) por dia** (1 linha/membro,
+>   tooltip com nome completo sem truncar via `wrapLabel`).
+> - **Sem filtro de atribuição** (Mar04): `metaScope()` considera TODOS os leads/gastos de todas as
+>   fontes (pronto p/ google/tiktok/orgânico); hoje só há Meta.
+> - Distribuição de leads em **1 linha** (`.row4`); KPIs secundários trocados por métricas analíticas
+>   (MQLs/dia, melhor CPMQL, top anúncio, concentração, ativos) em vez de repetir o funil.
+
 O `build.py` **não agrega**: exporta as linhas cruas e TODA a lógica (filtros de
 data, filtro cruzado, KPIs, tabelas, gráficos, heatmap, imposto) roda no navegador.
 Isso permite interatividade total sem servidor.

@@ -80,7 +80,7 @@
         <div class="kpis n2" id="geralKpis2"></div>
 
         <h2 class="sec-title">Distribuição de leads</h2>
-        <div class="funnel-charts">
+        <div class="row4">
           <div class="card"><h3>Leads por origem (utm_source)</h3><p class="hint">Todos os leads no período</p><div class="chart-box chart-sm"><canvas id="gSource"></canvas></div></div>
           <div class="card"><h3>Leads por faixa de faturamento</h3><p class="hint">Verde = qualificado (≥30 mil) · cinza = não</p><div class="chart-box chart-sm"><canvas id="gBucket"></canvas></div></div>
           <div class="card"><h3>Leads por plataforma</h3><p class="hint">Instagram / Facebook / Orgânico</p><div class="chart-box chart-sm"><canvas id="gPlat"></canvas></div></div>
@@ -102,24 +102,28 @@
           </div>
         </div>
 
-        <h2 class="sec-title">Leads por anúncio (utm_content)</h2>
-        <div class="card"><p class="hint">Top 10 · apenas Meta</p><div class="chart-box"><canvas id="mContent"></canvas></div></div>
+        <h2 class="sec-title">Anúncios · MQLs · qualificação · CAC</h2>
+        <div class="trio">
+          <div class="card"><h3>MQLs por anúncio</h3><p class="hint">Top 10 · utm_content</p><div class="chart-box chart-sm"><canvas id="mMqlAd"></canvas></div></div>
+          <div class="card"><h3>Taxa de qualificação por anúncio</h3><p class="hint">Verde = MQL (≥30 mil) · vermelho = desqualificado</p><div class="donut-wrap"><canvas id="mQlfDonut"></canvas><div class="donut-center"><div class="dc-val" id="mQlfPct">-</div><div class="dc-lbl">Tx‑MQL</div></div></div></div>
+          <div class="card" style="padding:0"><div style="padding:14px 15px 4px"><h3>Top anúncios por CAC</h3><p class="hint" style="margin:0">Menor CAC no topo · <b>CAC exige a lista de compradores</b> ("-")</p></div><div class="tbl-wrap" style="max-height:214px"><table class="dt" id="mTopCac"></table></div></div>
+        </div>
 
         <h2 class="sec-title">Hierarquia · Campanha → Conjunto → Anúncio</h2>
         <div class="table-chart-pair">
           <div class="thead-title">Campanhas</div>
           <div class="tbl-wrap tbl-normal"><table class="dt" id="tCamp"></table></div>
-          <div class="pair-chart"><div class="pc-title">CPL e CPMQL por dia</div><canvas id="chCamp"></canvas></div>
+          <div class="pair-chart"><div class="pc-title">MQLs por campanha, por dia</div><canvas id="chCamp"></canvas></div>
         </div>
         <div class="table-chart-pair">
           <div class="thead-title">Conjuntos (Ad Sets)</div>
           <div class="tbl-wrap tbl-normal"><table class="dt" id="tAdset"></table></div>
-          <div class="pair-chart"><div class="pc-title">CPL e CPMQL por dia</div><canvas id="chAdset"></canvas></div>
+          <div class="pair-chart"><div class="pc-title">MQLs por conjunto, por dia</div><canvas id="chAdset"></canvas></div>
         </div>
         <div class="table-chart-pair">
           <div class="thead-title">Anúncios</div>
           <div class="tbl-wrap tbl-double"><table class="dt" id="tAd"></table></div>
-          <div class="pair-chart"><div class="pc-title">CPL e CPMQL por dia</div><canvas id="chAd"></canvas></div>
+          <div class="pair-chart"><div class="pc-title">MQLs por anúncio, por dia</div><canvas id="chAd"></canvas></div>
         </div>
 
         <h2 class="sec-title">Leads qualificados <span class="pill q" id="qCount"></span></h2>
