@@ -354,13 +354,13 @@ const DAILY_COLS=[
   {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int',heat:'mqls'},{key:'cpmql',label:'CPMQL',type:'brl'},
   // Mar01: métricas de venda (aguardando aba de compradores -> "-")
   {key:'vendas',label:'Vendas',type:'int'},{key:'cac',label:'CAC',type:'brl'},
-  {key:'roas',label:'ROAS',type:'num'},{key:'tm',label:'TM',type:'brl'},
+  {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num'},
 ];
 function dailyCells(x,d,isTotal){
   const s=salesOf(x);
   return {date:isTotal?null:x.d, wd:isTotal?'':weekday(x.d), gasto:d.gasto, cpm:d.cpm, ctr:d.ctr, convf:d.convf,
     leads:x.leads, cpl:d.cpl, tx:d.tx, mqls:x.mqls, cpmql:d.cpmql,
-    vendas:s.vendas, cac:s.cac, roas:s.roas, tm:s.tm};
+    vendas:s.vendas, cac:s.cac, fat:s.fat, tm:s.tm, roas:s.roas};
 }
 
 /* ---------------- PAGE 2: Captura Meta Ads ---------------- */
