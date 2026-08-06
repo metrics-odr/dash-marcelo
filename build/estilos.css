@@ -95,22 +95,25 @@
   .sec-title:first-child{margin-top:0}
 
   .grid{display:grid; gap:16px}
-  .two-col{grid-template-columns:380px 1fr}
-  .three-col{grid-template-columns:360px 1fr}
-  .funnel-grid{grid-template-columns:340px 1fr; align-items:start}
-  .funnel-charts{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-content:start}
+  /* minmax(0,1fr) em vez de 1fr puro: evita que o conteúdo intrínseco de um filho
+     (ex.: rótulo longo de gráfico de barras) force a coluna/grid a estourar a largura
+     disponível — sem isso, o grid podia "vazar" e criar scroll horizontal na PÁGINA. */
+  .two-col{grid-template-columns:380px minmax(0,1fr)}
+  .three-col{grid-template-columns:360px minmax(0,1fr)}
+  .funnel-grid{grid-template-columns:340px minmax(0,1fr); align-items:start}
+  .funnel-charts{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-content:start}
   /* Mar02: três colunas de tamanho igual · Mar05: quatro gráficos na mesma linha */
-  .trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; align-items:stretch}
+  .trio{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:stretch}
   /* trio: os 3 cards com a MESMA altura (a tabela alinha com o gráfico/donut ao lado);
      o conteúdo interno cresce para preencher, sem mudar a altura total da seção */
-  .trio > .card{display:flex; flex-direction:column}
+  .trio > .card{display:flex; flex-direction:column; min-width:0}
   .trio > .card > .chart-box, .trio > .card > .donut-wrap, .trio > .card > .tbl-wrap{flex:1 1 auto; min-height:0}
-  .row4{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; align-content:start}
+  .row4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; align-content:start}
   @media(max-width:1000px){.two-col,.three-col,.funnel-grid{grid-template-columns:1fr}}
   @media(max-width:1200px){.funnel-charts{grid-template-columns:1fr}}
   @media(max-width:1200px){.trio{grid-template-columns:1fr} .row4{grid-template-columns:1fr 1fr}}
   @media(max-width:640px){.row4{grid-template-columns:1fr}}
-  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; min-width:0}
   .card h3{margin:0 0 2px; font-size:14px}
   .card .hint{font-size:12px; color:var(--muted); margin:0 0 10px}
 
@@ -134,7 +137,8 @@
   .pill{font-size:10.5px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
   .pill.q{color:var(--good); border-color:#bfe6bf}
 
-  .chart-box{position:relative; height:260px}
+  .chart-box{position:relative; height:260px; min-width:0}
+  .chart-box canvas{max-width:100%}
   .chart-sm{height:190px}
 
   /* Funnel */
@@ -166,11 +170,15 @@
   .tbl-normal{max-height:250px}
   .tbl-double{max-height:420px}
   table.dt{border-collapse:separate; border-spacing:0; min-width:100%; font-size:12.5px; table-layout:fixed}
-  table.dt th, table.dt td{padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden}
+  table.dt th, table.dt td{padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   table.dt thead th{position:sticky; top:0; z-index:2; background:var(--thead); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:right; cursor:pointer; user-select:none}
   table.dt thead th .rsz{position:absolute; right:0; top:0; width:9px; height:100%; cursor:col-resize; z-index:3}
   table.dt thead th .rsz:hover{background:var(--accent-blue); opacity:.5}
-  table.dt th.dim, table.dt td.dim{text-align:left; white-space:normal; word-break:break-word; min-width:0}
+  /* dimensão (campanha/conjunto/anúncio) NUNCA quebra linha: a largura padrão já
+     é calculada para caber o nome inteiro (autoDimWidth); se o usuário encolher a
+     coluna manualmente, corta com reticências (nunca quebra) — redimensione ou
+     dê 2 cliques na borda p/ auto-ajustar (como Sheets/Looker). */
+  table.dt th.dim, table.dt td.dim{text-align:left; min-width:0}
   table.dt td{text-align:right; font-variant-numeric:tabular-nums}
   table.dt td.dim{font-weight:500}
   table.dt thead th.sorted-asc::after{content:" ▲"; font-size:9px}

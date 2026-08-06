@@ -88,11 +88,36 @@ function daily(fL,fM){
 /* ---------------- generic interactive table ---------------- */
 /* cfg: {id, cols:[{key,label,type,dim?,heat?:'gasto'|'leads'|'mqls',cls?}], rows:[{k,cells:{}, raw?}],
         total:{}, selectable, selSet, onSelect } */
+// medição de texto (canvas) p/ auto-largura de coluna — "caiba o nome inteiro" (dim)
+// e auto-ajuste em duplo-clique na borda, como Google Sheets / Looker Studio.
+let _measureCtx=null;
+function textWidth(s, font){
+  if(!_measureCtx) _measureCtx=document.createElement('canvas').getContext('2d');
+  _measureCtx.font=font;
+  return _measureCtx.measureText(s==null?'':String(s)).width;
+}
+const fmtStd=(t,v)=> t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):dimf(v);
+const FONT_DIM='500 12.5px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
+const FONT_NUM='12.5px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
+const FONT_HEAD='700 11px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
+function autoDimWidth(cfg,c){
+  let max=textWidth(c.label||'',FONT_HEAD);
+  (cfg.rows||[]).forEach(r=>{ const w=textWidth(fmtStd(c.type,r.cells[c.key]),FONT_DIM); if(w>max) max=w; });
+  if(cfg.total && cfg.total[c.key]!=null){ const w=textWidth(fmtStd(c.type,cfg.total[c.key]),FONT_DIM); if(w>max) max=w; }
+  return Math.max(140, Math.min(640, Math.round(max)+34)); // + padding (10+10) + folga p/ seta de ordenação
+}
+function autoColWidth(cfg,c){
+  if(c.type==='dim') return autoDimWidth(cfg,c);
+  let max=textWidth(c.label||'',FONT_HEAD);
+  (cfg.rows||[]).forEach(r=>{ const w=textWidth(fmtStd(c.type,r.cells[c.key]),FONT_NUM); if(w>max) max=w; });
+  if(cfg.total && cfg.total[c.key]!=null){ const w=textWidth(fmtStd(c.type,cfg.total[c.key]),FONT_NUM); if(w>max) max=w; }
+  return Math.max(60, Math.min(260, Math.round(max)+24));
+}
 function colWidth(cfg,c){ const saved=(STATE.colw[cfg.id]||{})[c.key];
   if(saved) return saved;
   if(c.w) return c.w;
   if(c.type==='date') return 96;
-  if(c.type==='dim') return c.big?360:150;
+  if(c.type==='dim') return autoDimWidth(cfg,c);   // por padrão, cabe o nome inteiro
   return 92; }
 function renderTable(cfg){
   const table=document.getElementById(cfg.id); if(!table) return;
@@ -111,29 +136,32 @@ function renderTable(cfg){
   // em tabelas densas (fit) o R$ é omitido nas células (o cabeçalho já indica) p/ caber sem cortar
   const brlc=v=>(v==null||!isFinite(v))?'-':nf2.format(v);
   const fmt=(t,v)=> t==='brl'?(fit?brlc(v):brl(v)):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):dimf(v);
-  const widths=cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
+  const widths=fit?[]:cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
   // modo fit: dimensão/data com largura fixa; colunas numéricas dividem o resto por igual
   const fitW=c=> c.w?c.w+'px' : c.type==='date'?'74px' : c.type==='dim'?(c.big?'210px':'116px') : '';
   const colgroup='<colgroup>'+cfg.cols.map((c,i)=>{
     const w=fit?fitW(c):(widths[i]+'px'); return `<col${w?` style="width:${w}"`:''}>`;
   }).join('')+'</colgroup>';
+  const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
     const sc = sortState&&sortState.key===c.key ? (sortState.dir==='asc'?'sorted-asc':'sorted-desc') : '';
-    return `<th class="${c.type==='dim'?'dim ':''}${sc}" data-k="${c.key}" data-ci="${i}">${c.label}${fit?'':'<span class="rsz"></span>'}</th>`;
+    return `<th class="${c.type==='dim'?'dim ':''}${sc}" data-k="${c.key}" data-ci="${i}" title="${esc(c.label)}">${c.label}${fit?'':'<span class="rsz"></span>'}</th>`;
   }).join('')+'</tr></thead>';
+  // title = valor SEMPRE completo (mesmo em fit, onde a célula pode abreviar/cortar) — passe o mouse p/ ver
   let tbody='<tbody>'+rows.map(r=>{
     const sel = cfg.selectable && cfg.selSet && cfg.selSet.has(r.k);
     const tds=cfg.cols.map(c=>{
       const v=r.cells[c.key]; let bg='';
       if(c.heat && ext[c.key]) bg=`background:${heat(v,ext[c.key][0],ext[c.key][1],c.heat)}`;
       const cls=(c.type==='dim'?'dim':'')+(c.cls&&c.cls(r)?' '+c.cls(r):'');
-      return `<td class="${cls}" style="${bg}">${fmt(c.type,v)}</td>`;
+      return `<td class="${cls}" style="${bg}" title="${esc(fmtStd(c.type,v))}">${fmt(c.type,v)}</td>`;
     }).join('');
     return `<tr class="${sel?'sel':''}" data-k="${encodeURIComponent(r.k)}">${tds}</tr>`;
   }).join('')+'</tbody>';
   let tfoot='';
   if(cfg.total){ tfoot='<tfoot><tr>'+cfg.cols.map((c,i)=>{
-    const v=cfg.total[c.key]; return `<td class="${c.type==='dim'?'dim':''}">${i===0?(v==null?'Total Geral':fmt(c.type,v)):fmt(c.type,v)}</td>`;
+    const v=cfg.total[c.key]; const isFirst=i===0&&v==null;
+    return `<td class="${c.type==='dim'?'dim':''}" title="${isFirst?'Total Geral':esc(fmtStd(c.type,v))}">${isFirst?'Total Geral':fmt(c.type,v)}</td>`;
   }).join('')+'</tr></tfoot>'; }
   table.style.width=fit?'100%':totalW+'px';
   table.innerHTML=colgroup+thead+tbody+tfoot;
@@ -158,6 +186,14 @@ function renderTable(cfg){
         STATE.colw[cfg.id]=STATE.colw[cfg.id]||{}; STATE.colw[cfg.id][k]=nw; };
       const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); document.body.style.userSelect=''; localStorage.setItem('dm_colw',JSON.stringify(STATE.colw)); };
       document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+    });
+    // duplo-clique na borda = auto-ajustar largura ao conteúdo (como Sheets/Looker)
+    g.addEventListener('dblclick',e=>{ e.preventDefault(); e.stopPropagation();
+      const th=g.parentElement, k=th.dataset.k, c=cfg.cols.find(x=>x.key===k);
+      const nw=autoColWidth(cfg,c);
+      STATE.colw[cfg.id]=STATE.colw[cfg.id]||{}; STATE.colw[cfg.id][k]=nw;
+      localStorage.setItem('dm_colw',JSON.stringify(STATE.colw));
+      renderTable(cfg);
     });
   });
   // row select
@@ -446,11 +482,14 @@ function renderMeta(){
   function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
     convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas};}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
-  renderTable({id:'tCamp', center:true, fit:true, cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fL,Sc.fM,'camp')), total:totRowOf(totals(Sc.fL,Sc.fM)),
+  // Tabelas hierárquicas: NÃO usam "fit" — a dimensão (campanha/conjunto/anúncio)
+  // tem largura automática p/ caber o nome INTEIRO por padrão, nunca quebra linha,
+  // é redimensionável (arrastar borda) e 2 cliques na borda auto-ajusta (Sheets/Looker).
+  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fL,Sc.fM,'camp')), total:totRowOf(totals(Sc.fL,Sc.fM)),
     selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAdset', center:true, fit:true, cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fL,Sa.fM,'adset')), total:totRowOf(totals(Sa.fL,Sa.fM)),
+  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fL,Sa.fM,'adset')), total:totRowOf(totals(Sa.fL,Sa.fM)),
     selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', center:true, fit:true, cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fL,Sd.fM,'ad')), total:totRowOf(totals(Sd.fL,Sd.fM)),
+  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fL,Sd.fM,'ad')), total:totRowOf(totals(Sd.fL,Sd.fM)),
     selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
   // Mar03: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha por membro
@@ -461,7 +500,7 @@ function renderMeta(){
   // qualified leads
   const q=fL.filter(l=>l.q).sort((a,b)=>(a.d<b.d?1:-1));
   document.getElementById('qCount').textContent=q.length+' leads';
-  renderTable({id:'tQual', fit:true,
+  renderTable({id:'tQual',
     cols:[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'},{key:'prof',label:'Profissão',type:'dim'},
       {key:'bucket',label:'Faixa',type:'dim'},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200},{key:'ph',label:'Telefone',type:'dim',w:110}],
     rows:q.map((l,i)=>({k:'q'+i, cells:{d:l.d,nm:l.nm,prof:l.prof,bucket:l.bucket,camp:l.camp,em:l.em,ph:l.ph}}))});
