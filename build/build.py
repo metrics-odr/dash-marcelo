@@ -36,6 +36,16 @@ EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid
 BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
 TAX_FACTOR = 1.13806                  # imposto Meta Ads (+13,806%) — toggle no front
 
+# --------------------------------------------------------------------------- #
+# Regras da aba Relatório (Top/Piores anúncios)
+# --------------------------------------------------------------------------- #
+# Amostra mínima para julgar um anúncio como "vencedor" ou "ruim". Abaixo disso
+# ele entra como "Em observação" (dado insuficiente) — nunca é classificado só
+# porque teve 1 resultado com pouco investimento. Ajuste conforme o ticket/CAC.
+SAMPLE_MIN_SPEND = 100.0   # gasto mínimo (R$) para amostra relevante
+SAMPLE_MIN_MQLS = 3        # MQLs mínimos para julgar qualidade profunda
+TOP_ADS_N = 10             # nº de linhas em Top / Piores anúncios
+
 
 # --------------------------------------------------------------------------- #
 # Leitura
@@ -238,19 +248,32 @@ def process(leads_rows, meta_rows):
         mheader,
         {"day": ["day", "data"], "campaign": ["campaign name", "campaign"], "adset": ["ad set name", "adset"],
          "ad": ["ad name"], "spent": ["amount spent", "valor gasto", "gasto"], "impr": ["impressions", "impress"],
-         "clicks": ["link clicks", "clicks", "cliques"], "leads": ["leads"]},
+         "clicks": ["link clicks", "clicks", "cliques"], "leads": ["leads"],
+         # Link do criativo no Instagram (coluna acrescentada pelo cliente na aba
+         # Meta Ads). Usada na aba Relatório (Top/Piores anúncios) para linkar o
+         # anúncio. Aliases cobrem variações do cabeçalho.
+         "link": ["creative instagram permalink", "instagram permalink", "permalink",
+                  "creative link", "link do anuncio", "link do criativo"]},
         {"day": 0, "campaign": 1, "adset": 2, "ad": 3, "spent": 4, "impr": 5, "clicks": 6, "leads": 7},
     )
 
     meta = []
+    # Anúncio (nome) -> 1 permalink do Instagram. "Qualquer um correlato" ao
+    # anúncio serve (o mesmo criativo pode rodar em vários dias/conjuntos);
+    # guardamos o primeiro link não-vazio encontrado para cada anúncio.
+    ad_links = {}
     for row in meta_rows[1:]:
         if not any((c or "").strip() for c in row):
             continue
+        ad = cell(row, midx["ad"]) or "(sem anúncio)"
+        link = cell(row, midx["link"])
+        if link and ad not in ad_links:
+            ad_links[ad] = link
         meta.append({
             "d": parse_date(cell(row, midx["day"])),
             "camp": cell(row, midx["campaign"]) or "(sem campanha)",
             "adset": cell(row, midx["adset"]) or "(sem conjunto)",
-            "ad": cell(row, midx["ad"]) or "(sem anúncio)",
+            "ad": ad,
             "sp": round(to_float(cell(row, midx["spent"])), 4),
             "im": to_float(cell(row, midx["impr"])),
             "cl": to_float(cell(row, midx["clicks"])),
@@ -267,10 +290,38 @@ def process(leads_rows, meta_rows):
             "date_min": dates[0] if dates else None,
             "date_max": dates[-1] if dates else None,
             "tax_factor": TAX_FACTOR,
+            # config da aba Relatório (lida pelo front)
+            "sample_min_spend": SAMPLE_MIN_SPEND,
+            "sample_min_mqls": SAMPLE_MIN_MQLS,
+            "top_ads_n": TOP_ADS_N,
         },
         "leads": leads,
         "meta": meta,
+        # Anúncio -> permalink do criativo no Instagram (aba Relatório).
+        "ad_links": ad_links,
+        # Briefings do Gestor (texto por IA, gerado 1x/dia). Preenchido em main()
+        # via load_briefings(); fica {} se relatorios.json não existir.
+        "briefings": {},
     }
+
+
+# --------------------------------------------------------------------------- #
+# Briefings do Gestor (aba Relatório)
+# --------------------------------------------------------------------------- #
+def load_briefings(path: str) -> dict:
+    """Lê build/relatorios.json (gerado pela rotina diária de IA). Estrutura:
+        {"generated_at": "...", "periodos": {"<preset>": {"html": "..."}, ...}}
+    Retorna o dict inteiro (ou {} se o arquivo não existir/for inválido).
+    A geração NÃO acontece aqui — este build só lê o texto já pronto, sem
+    chamar nenhuma API (custo zero no build/no navegador)."""
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            obj = json.load(f)
+        return obj if isinstance(obj, dict) else {}
+    except (ValueError, OSError):
+        return {}
 
 
 # --------------------------------------------------------------------------- #
@@ -311,6 +362,11 @@ def main():
     leads_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_LEADS), args.leads_file)
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     data = process(leads_rows, meta_rows)
+
+    # Briefings do Gestor (texto por IA, gerado 1x/dia) — lidos do arquivo
+    # versionado ao lado do template. Sem chamada de API no build.
+    briefings_path = os.path.join(os.path.dirname(os.path.abspath(args.template)), "relatorios.json")
+    data["briefings"] = load_briefings(briefings_path)
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
