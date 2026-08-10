@@ -307,7 +307,8 @@ function donutQlf(id, mqls, leads){
   const el2=document.getElementById('mQlfPct'); if(el2) el2.textContent=pct(leads?mqls/leads:null);
 }
 /* Mar03: MQLs por dimensão (campanha/conjunto/anúncio) por dia — 1 linha por membro.
-   Legenda oculta e tooltip 'nearest' mostram o NOME COMPLETO sem truncar + MQLs do dia. */
+   Legenda exibida com nomes completos, tooltip mostra valor + MQLs do dia.
+   Clique na legenda filtra a tabela e gráficos; clique na tabela filtra gráfico. */
 /* quebra um rótulo longo em várias linhas (p/ o tooltip NUNCA truncar o nome) */
 function wrapLabel(s,n){ s=String(s==null?'':s); const words=s.split(' '); const lines=[]; let cur='';
   words.forEach(w=>{ if(cur && (cur+' '+w).length>n){ lines.push(cur); cur=w; } else cur=cur?cur+' '+w:w; });
@@ -323,15 +324,49 @@ function mqlByDimChart(id, fL, dim){
     const col=pal[i%pal.length];
     return {label:String(mv), data:days.map(d=>byDay[d]), borderColor:col, backgroundColor:col, borderWidth:2, pointRadius:2, tension:.25, spanGaps:true};
   });
+  const dimChar={'camp':'C','adset':'A','ad':'D'}[dim]||'C';
   charts[id]=new Chart(el,{type:'line',
     data:{labels:days.map(d=>d.slice(5)), datasets:dsets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
-      plugins:{legend:{display:false},
+      onClick:(e,act)=>{
+        // clique na legenda filtra a tabela correspondente
+        if(act.length){
+          const idx=act[0].datasetIndex;
+          if(idx!=null&&dsets[idx]){
+            const mv=dsets[idx].label;
+            selDim(dimChar,mv,false);
+          }
+        }
+      },
+      plugins:{
+        legend:{
+          display:true,
+          labels:{
+            color:mut,font:{size:10},
+            padding:8,
+            // gera legenda com cores e nomes completos
+            generateLabels:c=>c.data.datasets.map((ds,i)=>({
+              text:ds.label,
+              fillStyle:ds.borderColor,strokeStyle:ds.borderColor,lineWidth:2,hidden:false,index:i,pointStyle:'line'
+            }))
+          },
+          // clique na legenda também filtra (fallback)
+          onClick:(e,it,leg)=>{
+            const idx=it.index;
+            if(idx!=null&&dsets[idx]){
+              const mv=dsets[idx].label;
+              selDim(dimChar,mv,false);
+            }
+          }
+        },
         // tooltip mostra o NOME COMPLETO (quebrado em linhas, sem truncar) + MQLs do dia
         tooltip:{displayColors:true,
-          callbacks:{title:it=>it.length?wrapLabel(it[0].dataset.label,44):'', label:c=>c.label+': '+intf(c.raw)+' MQLs'}}},
+          callbacks:{title:it=>it.length?wrapLabel(it[0].dataset.label,44):'', label:c=>c.label+': '+intf(c.raw)+' MQLs'}}
+      },
       scales:{x:{ticks:{color:mut,font:{size:9}},grid:{display:false}},
-        y:{ticks:{color:mut,font:{size:9},precision:0},grid:{color:cgrid()},beginAtZero:true}}}});
+        y:{ticks:{color:mut,font:{size:9},precision:0},grid:{color:cgrid()},beginAtZero:true}}
+    }
+  });
 }
 
 /* ---------------- KPI cards ---------------- */
