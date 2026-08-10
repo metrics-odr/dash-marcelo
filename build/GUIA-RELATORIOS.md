@@ -121,42 +121,60 @@ A aba calcula sozinha, por anúncio (com gasto no período):
 
 O briefing deve **explicar** o ranking (por quê), não repeti-lo.
 
-## Estrutura esperada do briefing (por período)
+## Formato "Insights de Tráfego" (por período) — foco em AÇÃO
 
-Escreva em português, **profundo mas sem enrolação**, pouco técnico. Para cada
-período redija:
+> A seção da aba chama-se **Insights de Tráfego**. O tom é de **analista de
+> performance**: cada período fecha com decisão, não só leitura de número.
+> Português, profundo mas sem enrolação. **Sempre** use exatamente estes 5–6
+> blocos, nesta ordem (cada um é um `<h3>`):
 
-1. **Resumo executivo** — investimento; leads/MQLs/check-ins/presenças/vendas;
-   principal avanço; principal gargalo; prioridade atual.
-2. **Diagnóstico do funil** — em qual etapa está a **maior perda** (não escolha
-   a menor taxa automaticamente; pese volume absoluto perdido, meta, histórico,
-   impacto financeiro, maturação, capacidade da sala e facilidade de correção).
-3. **Diagnóstico de mídia** — quais campanhas/conjuntos/anúncios puxam resultado;
-   quais gastam sem resultado profundo; mudanças em CPM/CTR/CPL/frequência;
-   fadiga/saturação/público; e se o problema de mídia realmente afeta as etapas
-   seguintes.
-4. **Diagnóstico comercial** — quando MQL/CPMQL saudáveis mas Tx Check-in ruim:
-   tempo até 1º contato, taxa de contato, tentativas, canais, script, objeções,
-   disponibilidade, distância, interesse real, critério de MQL, atendente.
-5. **Diagnóstico de presença** — quando Tx Check-in ok mas presença baixa:
-   confirmação/antecedência/lembretes/reconfirmação/logística/clima/valor percebido.
-6. **Diagnóstico de vendas** — quando presença boa mas venda baixa: qualidade da
-   sala, profissões/faixas, aderência tema↔oferta, conteúdo, pitch, oferta, provas,
-   condições, follow-up, maturação.
-7. **Recomendações** — cada uma com: (a) o que fazer; (b) em qual estrutura/etapa;
-   (c) quais métricas justificam; (d) resultado esperado; (e) métrica de validação.
-   Prefira escala **gradual (10–20%)** e só com amostra/estabilidade/maturação.
+1. **Resumo do período** — números brutos (gasto, leads, MQLs, Tx‑MQL, CPL, CPMQL)
+   **+ comparação obrigatória contra as janelas de 7, 14 e 30 dias**. Toda métrica
+   citada vem com referência: a **meta/teto** da conta **ou**, se não definida, a
+   comparação com o próprio histórico + o aviso **"meta não definida"** (nunca deixe
+   um número sem referência de bom/ruim). Abra com a linha de status das metas.
+2. **Leitura do funil** — o que está **funcionando**, o que é **ruído por volume
+   baixo** (e quantos MQLs/dias/R$ faltam para virar amostra confiável), e o que é
+   **gargalo de dado**. Nunca conclua nada abaixo do volume mínimo amostral.
+3. **Classificação por campanha/conjunto** — `<ul>` onde **cada** estrutura recebe
+   obrigatoriamente **uma das 4 tags** com o **critério numérico** que levou a ela:
+   - **`Escalar`** — volume ≥ mínimo amostral **E** Tx‑MQL estável/subindo nas 2
+     últimas janelas.
+   - **`Observar`** — volume < mínimo amostral; **informe** o gasto/dias que faltam
+     até volume suficiente.
+   - **`Otimizar`** — volume suficiente, mas Tx‑MQL caindo **ou** CPL subindo por 2
+     janelas consecutivas; **aponte a hipótese** (fadiga de criativo, saturação de
+     público, frequência alta, mudança de qualificação) antes de generalizar.
+   - **`Cortar`** — volume suficiente, **zero** conversão qualificada, e CPL/CPMQL
+     acima do **teto** por **N dias** consecutivos (N do painel; padrão 5). **Cortar
+     exige meta/teto definido** — se a meta não estiver preenchida, não classifique
+     nada como Cortar; diga que depende de definir a meta.
+4. **Gargalo de dado — prioridade alta** — sempre que uma etapa (check‑in, presença,
+   venda, faturamento) **não tiver fonte conectada**, isso é um item de ação próprio,
+   **separado** dos gargalos de campanha, com prioridade alta (otimizar sem essa
+   etapa é decisão às cegas). Enquanto o funil só for até MQL, este bloco existe em
+   todos os períodos.
+5. **Ações recomendadas** — com **números concretos** (%, R$, dias). Para escala,
+   recomende o **tamanho do incremento** (ex.: +10–20% a cada 3–4 dias) e **alerte
+   sobre resetar o aprendizado** se o salto for maior. Cada ação diz: o que fazer,
+   em qual estrutura/etapa, quais métricas justificam, resultado esperado e a
+   métrica de validação.
+6. **Próxima decisão** — **gatilho** (o que muda a classificação de cada campanha)
+   **+ prazo/gasto** para revisitar (ex.: "revisar em 4 dias ou ~R$ 600 de gasto").
 
-### Formato dos insights (use as 4 tags)
-`Prioridade (alta/média/baixa) · Etapa (mídia/qualificação/comercial/presença/
-evento/vendas) · Nível (conta/campanha/conjunto/anúncio/funil) · Diagnóstico ·
-Evidências · Interpretação sistêmica · Ação · Validação · Confiança.`
+Ao citar um anúncio (ex. "AD05"), **sempre** diga a campanha (e o conjunto quando
+ajudar) — o mesmo nome de anúncio pode rodar em campanhas diferentes.
 
-Tags de ação (chips coloridos): **`Escalar`** (vencedor claro, escala gradual) ·
-**`Otimizar`** (converte mas tem ajuste óbvio antes de escalar/cortar) ·
-**`Cortar`** (só gasta, já teve gasto para julgar) · **`Observar`** (amostra/tempo
-insuficiente). Ao citar um anúncio (ex. “AD07”), **sempre** diga a campanha (e o
-conjunto quando ajudar) — o mesmo nome de anúncio pode rodar em campanhas diferentes.
+### Metas & parâmetros (painel editável da aba)
+O gestor preenche no topo da aba: **Meta CPMQL**, **Meta CAC**, **Volume mínimo
+amostral (MQLs)** e **N dias p/ corte**. Defaults em `build.py` (`META_CPMQL`,
+`META_CAC` = None → "não definida"; `VOLUME_MIN_AMOSTRAL`, `N_DIAS_CORTE`) e também
+em `relatorios_metrics.json`. As tabelas de anúncio **recoram CPMQL/CAC** vs meta
+(verde ≤ meta · amarelo até +30% · vermelho acima) e o badge **Em observação/
+Avaliável** usa o volume mínimo — tudo ao vivo. O texto dos Insights **cita a meta
+(ou "meta não definida")** e usa o volume mínimo/N dias configurados como critério
+das classificações. Se `META_CPMQL`/`META_CAC` estiverem None, escreva comparando
+contra as janelas 7/14/30 d e sinalize que a meta não foi definida.
 
 ## Comparações e segurança analítica
 
@@ -182,7 +200,7 @@ CPP, CAC, volume de presenças, faturamento e ROAS — **nunca só por CPL/Tx MQ
   "generated_at": "DD/MM/AAAA HH:MM",
   "fonte": "Gerado automaticamente a partir dos dados do funil (Meta Ads × Leads).",
   "periodos": {
-    "hoje":    {"html": "<h3>Resumo executivo</h3><p>…</p>…"},
+    "hoje":    {"html": "<h3>Resumo do período</h3><p>…</p><h3>Leitura do funil</h3><p>…</p><h3>Classificação por campanha/conjunto</h3><ul>…</ul><h3>Gargalo de dado — prioridade alta</h3><p>…</p><h3>Ações recomendadas</h3><p>…</p><h3>Próxima decisão</h3><p>…</p>"},
     "ontem":   {"html": "…"},
     "3d":      {"html": "…"},
     "7d":      {"html": "…"},

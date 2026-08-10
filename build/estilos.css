@@ -231,6 +231,28 @@
   .rel-chip{font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; border:1px solid var(--border)}
   .rel-chip.c-green{color:var(--good); background:color-mix(in srgb,var(--good) 12%,transparent)}
   .rel-chip.c-yellow{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%,transparent)}
+  .rel-chip.c-red{color:var(--bad); background:color-mix(in srgb,var(--bad) 12%,transparent)}
+
+  /* painel de Metas & parâmetros (editável) */
+  .rel-metas{margin-bottom:14px}
+  .rel-metas-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px}
+  .rel-metas-head .hint{font-size:12px; color:var(--muted); font-weight:400}
+  .rel-metas-grid{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px}
+  @media(max-width:760px){.rel-metas-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .rel-meta{display:flex; flex-direction:column; gap:5px}
+  .rel-meta span{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; font-weight:600}
+  .rel-meta input{width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--ink); font-size:14px; font-variant-numeric:tabular-nums}
+  .rel-meta input:focus{outline:none; border-color:var(--accent-blue); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-blue) 22%,transparent)}
+  .rel-metas .note{margin-top:12px; margin-bottom:0}
+  /* célula com código de cor vs meta (CPMQL/CAC) nas tabelas de anúncio */
+  table.dt.rel-adt td.mc-green{background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); font-weight:700}
+  table.dt.rel-adt td.mc-yellow{background:color-mix(in srgb,var(--yellow) 18%,transparent); color:var(--yellow); font-weight:700}
+  table.dt.rel-adt td.mc-red{background:color-mix(in srgb,var(--bad) 15%,transparent); color:var(--bad); font-weight:700}
+  /* chips de legenda de cor na nota do painel de metas */
+  .mc-lg{display:inline-block; font-weight:700; padding:0 6px; border-radius:6px; margin:0 1px}
+  .mc-lg.mc-green{color:var(--good); background:color-mix(in srgb,var(--good) 15%,transparent)}
+  .mc-lg.mc-yellow{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 18%,transparent)}
+  .mc-lg.mc-red{color:var(--bad); background:color-mix(in srgb,var(--bad) 15%,transparent)}
 
   /* tabelas Top/Piores anúncios (22 colunas + Status): largura automática + scroll
      lateral contido na .tbl-wrap (NÃO usa table-layout fixed). Anúncio, Status e

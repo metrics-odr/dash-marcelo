@@ -57,22 +57,32 @@ SETUP-CRON.md             # valores exatos do cron-job.org
 ### Aba Relatório (funil de evento presencial High Ticket)
 Terceira página (sidebar, entre Meta Ads e o rodapé). **Espelha a Visão Geral**
 (mesmo funil/KPIs/gráficos/tabela diária, via `renderGeralCore(REL_IDS)`) e, abaixo,
-acrescenta 3 blocos novos:
-- **Top Anúncios** e **Piores Anúncios** — 22 colunas (Anúncio · Campanha · Conjunto ·
-  Gasto · Impr · CPM · CTR · Leads · CPL · MQLs · Tx‑MQL · CPMQL · Check‑ins · Tx‑Check‑in ·
-  CPCIN · Presenças · CPP · Vendas · CAC · Faturamento · ROAS · **Link**). Ranking pelo
-  **resultado mais profundo disponível** (Venda→Presença→Check‑in→MQL), amostra relevante
-  primeiro; sem amostra → badge **“Em observação”** (nunca “vencedor”/“ruim” por 1 resultado
-  ou por CTR/CPM/CPL isolados). Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`,
-  `TOP_ADS_N`. Scroll lateral **contido na tabela** (`.rel-adt` → `table-layout:auto`).
-- **Briefing do Gestor** — texto interpretativo por período, **pré-gerado por IA** e lido de
-  `build/relatorios.json` (sem chamada de API no build/navegador). Chaves de período fixas
-  (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags `Escalar/Otimizar/Cortar/Observar`.
-  Regras de escrita e interpretação do funil em `build/GUIA-RELATORIOS.md`. **Automação já
-  ativa** (2 etapas diárias — ver seção "Automação em 2 etapas" no topo do guia): 23:50 BRT
-  o workflow `gerar-relatorios-metrics.yml` busca as planilhas e commita
-  `build/relatorios_metrics.json`; 23:59 BRT a **Routine do Claude Code** (`trig_014edxZX63uCgtjvXvwJmrqF`)
-  redige os 9 briefings e dá push direto na `main`.
+acrescenta 3 blocos novos + um painel de metas editável:
+- **Metas & parâmetros (painel editável)** — no topo da aba: Meta CPMQL, Meta CAC, Volume
+  mínimo amostral (MQLs), N dias p/ corte. Persiste em `localStorage['dm_metas']`, default de
+  `build.py` (`META_CPMQL`/`META_CAC`=None → "não definida"; `VOLUME_MIN_AMOSTRAL`/`N_DIAS_CORTE`).
+  Editar recolore **CPMQL/CAC** nas tabelas de anúncio (verde ≤ meta · amarelo até +30% ·
+  vermelho acima) e ajusta o badge Em observação/Avaliável (usa o volume mínimo), **tudo ao vivo**
+  (`METAS` + `renderRelAds()` em `app.js`, sem re-render dos gráficos).
+- **Top Anúncios** e **Piores Anúncios** — 22 colunas + coluna **Status** (Anúncio · Status ·
+  Campanha · Conjunto · Gasto · Impr · CPM · CTR · Leads · CPL · MQLs · Tx‑MQL · CPMQL · Check‑ins ·
+  Tx‑Check‑in · CPCIN · Presenças · CPP · Vendas · CAC · Faturamento · ROAS · **Link**). Anúncio,
+  Status e Link ficam **sticky** (visíveis sem rolar). Ranking pelo **resultado mais profundo
+  disponível** (Venda→Presença→Check‑in→MQL), amostra relevante primeiro; sem amostra → badge
+  **“Em observação”** (nunca “vencedor”/“ruim” por 1 resultado ou por CTR/CPM/CPL isolados).
+  Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`, `TOP_ADS_N`. Scroll lateral
+  **contido na tabela** (`.rel-adt` → `table-layout:auto`).
+- **Insights de Tráfego** (antes "Briefing do Gestor") — texto por período no formato de analista
+  de performance (foco em ação), **pré-gerado por IA** e lido de `build/relatorios.json` (sem API
+  no build/navegador). 6 blocos fixos: Resumo (com comparação 7/14/30 d) · Leitura do funil ·
+  Classificação por campanha/conjunto (tag + critério numérico) · **Gargalo de dado (prioridade
+  alta)** · Ações (com %, R$, dias) · Próxima decisão (gatilho + prazo). Cita a meta ou sinaliza
+  "meta não definida". Chaves de período fixas (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags
+  `Escalar/Otimizar/Cortar/Observar`. Regras completas em `build/GUIA-RELATORIOS.md`. **Automação
+  ativa** (2 etapas diárias — ver "Automação em 2 etapas" no topo do guia): 23:50 BRT o workflow
+  `gerar-relatorios-metrics.yml` busca as planilhas e commita `build/relatorios_metrics.json`;
+  23:59 BRT a **Routine do Claude Code** (`trig_014edxZX63uCgtjvXvwJmrqF`) redige os 9 insights e
+  dá push direto na `main`.
 
 Funil completo do evento: `Impressões → Cliques → Leads → MQLs → Check-ins → Presenças →
 Vendas → Faturamento`. Hoje só há Meta×Leads (vai até MQL); Check-ins/Presenças/Vendas/Fat
@@ -158,9 +168,10 @@ Três **páginas separadas** (sidebar, sem rolar entre elas):
 2. **Captura Meta Ads** — funil em etapas; combinado diário; barras por utm_content;
    **tabela diária com heatmap (só Meta)**; **3 tabelas hierárquicas** Campanha →
    Conjunto → Anúncio, cada uma com **gráfico de linha colado embaixo**.
-3. **Relatório** — espelha a Visão Geral e acrescenta **Top Anúncios · Piores Anúncios**
-   (22 colunas com link do criativo) + **Briefing do Gestor** (texto por IA de
-   `relatorios.json`). Ver seção "Aba Relatório" acima e `build/GUIA-RELATORIOS.md`.
+3. **Relatório** — espelha a Visão Geral e acrescenta **painel de Metas editável** +
+   **Top Anúncios · Piores Anúncios** (22 colunas + Status, com link do criativo) +
+   **Insights de Tráfego** (texto por IA de `relatorios.json`, foco em ação). Ver seção
+   "Aba Relatório" acima e `build/GUIA-RELATORIOS.md`.
 
 **Ordem das colunas nas tabelas de heatmap/hierarquia:**
 `Data · Dia · Gasto · CPM · CTR · ConvForm(=Leads/Cliques) · Leads · CPL · Tx‑MQL · MQLs · CPMQL`

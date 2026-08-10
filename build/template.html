@@ -148,6 +148,21 @@
           </div>
         </div>
 
+        <!-- ---- Metas & parâmetros (editável) — ajusta cores e amostra ao vivo ---- -->
+        <div class="rel-metas card">
+          <div class="rel-metas-head">
+            <div><b>Metas &amp; parâmetros da conta</b> <span class="hint">preencha as metas → as tabelas de anúncios coloram CPMQL/CAC e a classificação de amostra se ajustam na hora (fica salvo neste navegador).</span></div>
+            <button class="btn" id="relMetasReset" type="button">Restaurar padrão</button>
+          </div>
+          <div class="rel-metas-grid">
+            <label class="rel-meta"><span>Meta CPMQL (R$)</span><input type="number" id="metaCpmql" min="0" step="1" inputmode="decimal" placeholder="não definida"></label>
+            <label class="rel-meta"><span>Meta CAC (R$)</span><input type="number" id="metaCac" min="0" step="1" inputmode="decimal" placeholder="não definida"></label>
+            <label class="rel-meta"><span>Volume mín. amostral (MQLs)</span><input type="number" id="metaVolMin" min="1" step="1"></label>
+            <label class="rel-meta"><span>N dias p/ corte</span><input type="number" id="metaNdias" min="1" step="1"></label>
+          </div>
+          <p class="note" id="relMetasNote"></p>
+        </div>
+
         <!-- ---- espelho da Visão Geral (mesmos dados/gráficos, IDs próprios) ---- -->
         <h2 class="sec-title">Funil de leads &amp; evolução diária</h2>
         <div class="grid funnel-grid">
@@ -185,7 +200,7 @@
           <p class="note" style="padding:10px 15px">Só entram anúncios com <b>investimento relevante</b> e resultado profundo fraco / custo pior que a média — nunca por CTR, CPM ou CPL isolados. Sem amostra suficiente → <b>Em observação</b>, não “ruim”.</p>
         </div>
 
-        <h2 class="sec-title">Briefing do Gestor</h2>
+        <h2 class="sec-title">Insights de Tráfego</h2>
         <div class="rel-brief" id="relBrief"></div>
         <p class="note" id="relBriefStamp"></p>
       </div>

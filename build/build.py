@@ -46,6 +46,17 @@ SAMPLE_MIN_SPEND = 100.0   # gasto mínimo (R$) para amostra relevante
 SAMPLE_MIN_MQLS = 3        # MQLs mínimos para julgar qualidade profunda
 TOP_ADS_N = 10             # nº de linhas em Top / Piores anúncios
 
+# Metas & parâmetros da conta (DEFAULTS do painel editável da aba Relatório).
+# São só o valor inicial: o usuário edita no navegador (persistido em
+# localStorage) e as tabelas de anúncios recoram CPMQL/CAC e reavaliam a
+# amostra ao vivo. None = "meta não definida" (métrica aparece sem cor até o
+# gestor preencher). Estes valores também vão para relatorios_metrics.json, para
+# a IA citar a meta ao escrever os Insights de Tráfego.
+META_CPMQL = None          # meta de CPMQL (R$/MQL); None = não definida
+META_CAC = None            # meta de CAC (R$/venda); None = não definida
+VOLUME_MIN_AMOSTRAL = SAMPLE_MIN_MQLS  # conversões (MQLs) mínimas p/ amostra confiável
+N_DIAS_CORTE = 5           # dias consecutivos acima do teto p/ considerar corte
+
 
 # --------------------------------------------------------------------------- #
 # Leitura
@@ -294,6 +305,11 @@ def process(leads_rows, meta_rows):
             "sample_min_spend": SAMPLE_MIN_SPEND,
             "sample_min_mqls": SAMPLE_MIN_MQLS,
             "top_ads_n": TOP_ADS_N,
+            # metas & parâmetros (defaults do painel editável; None = não definida)
+            "meta_cpmql": META_CPMQL,
+            "meta_cac": META_CAC,
+            "volume_min_amostral": VOLUME_MIN_AMOSTRAL,
+            "n_dias_corte": N_DIAS_CORTE,
         },
         "leads": leads,
         "meta": meta,

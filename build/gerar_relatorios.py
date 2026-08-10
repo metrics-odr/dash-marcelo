@@ -227,6 +227,11 @@ def main():
         "gerado_em": datetime.now(BRT).strftime("%d/%m/%Y %H:%M"),
         "hoje": B["today"], "periodo_dados": {"de": B["date_min"], "ate": B["date_max"]},
         "sample_min_spend": B["sample_min_spend"], "sample_min_mqls": B["sample_min_mqls"],
+        # metas & parâmetros da conta (None = não definida) — a IA cita a meta ou
+        # sinaliza "meta não definida" nos Insights de Tráfego.
+        "metas": {"cpmql": B.get("meta_cpmql"), "cac": B.get("meta_cac"),
+                  "volume_min_amostral": B.get("volume_min_amostral"),
+                  "n_dias_corte": B.get("n_dias_corte")},
         "periodos": {k: period_metrics(leads, meta, a, b, tax, B["sample_min_spend"],
                                         B["sample_min_mqls"], B["top_ads_n"])
                      for k, (a, b) in ps.items()},
