@@ -421,14 +421,24 @@ const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function adLinkCell(name){ const u=AD_LINKS[name];
   return u?`<a class="rel-adlink" href="${escHtml(u)}" target="_blank" rel="noopener">Abrir ▸</a>`:'<span class="rel-adlink off">—</span>'; }
 
-/* ad -> (campanha, conjunto) dominantes por gasto no Meta (fallback: lead) */
+/* ad -> (campanha, conjunto) dominantes por gasto no Meta (fallback: lead).
+   Um anúncio pode rodar em mais de uma campanha/conjunto; fica com a combinação
+   de maior gasto. */
 function adStructMap(fM,fL){
   const acc={};
-  fM.forEach(r=>{ (acc[r.ad]=acc[r.ad]||{}); const k=r.camp+''+r.adset; acc[r.ad][k]=(acc[r.ad][k]||0)+r.sp; });
+  fM.forEach(r=>{ const byCamp=acc[r.ad]=acc[r.ad]||{};
+    const byAdset=byCamp[r.camp]=byCamp[r.camp]||{};
+    byAdset[r.adset]=(byAdset[r.adset]||0)+r.sp; });
   const out={};
-  Object.entries(acc).forEach(([ad,mp])=>{ let bk=null,bs=-Infinity;
-    Object.entries(mp).forEach(([k,s])=>{ if(s>bs){bs=s;bk=k;} });
-    const p=(bk||'').split(''); out[ad]={camp:p[0],adset:p[1]}; });
+  Object.entries(acc).forEach(([ad,byCamp])=>{
+    let best=null;
+    Object.entries(byCamp).forEach(([camp,byAdset])=>{
+      Object.entries(byAdset).forEach(([adset,sp])=>{
+        if(!best||sp>best.sp) best={camp,adset,sp};
+      });
+    });
+    out[ad]={camp:best.camp,adset:best.adset};
+  });
   fL.forEach(r=>{ if(!out[r.ad]) out[r.ad]={camp:r.camp,adset:r.adset}; });
   return out;
 }
@@ -449,39 +459,45 @@ function cmpBest(a,b){ const qa=adQuality(a), qb=adQuality(b);   // <0 => a ante
   if(qa.vol!==qb.vol)   return qb.vol-qa.vol;
   return qa.cost-qb.cost; }
 
-/* 22 colunas pedidas pelo cliente (ordem exata) */
+/* 22 colunas pedidas pelo cliente + coluna própria de Status (amostra).
+   Anúncio/Status ficam FIXOS à esquerda e Link FIXO à direita (position:sticky
+   em .rel-adt), então dão pra ver sem rolar lateralmente — só as métricas do
+   meio rolam. Larguras em px casam com o CSS (.rel-adt .stk-*). */
 const AD_COLS=[
-  {k:'ad',label:'Anúncio',dim:true},{k:'camp',label:'Campanha',dim:true},{k:'adset',label:'Conjunto',dim:true},
+  {k:'ad',label:'Anúncio',dim:true,stk:'l1'},{k:'status',label:'Status',dim:true,stk:'l2'},
+  {k:'camp',label:'Campanha',dim:true},{k:'adset',label:'Conjunto',dim:true},
   {k:'gasto',label:'Gasto'},{k:'im',label:'Impr.'},{k:'cpm',label:'CPM'},{k:'ctr',label:'CTR'},
   {k:'leads',label:'Leads'},{k:'cpl',label:'CPL'},{k:'mqls',label:'MQLs'},{k:'tx',label:'Tx‑MQL'},{k:'cpmql',label:'CPMQL'},
   {k:'checkins',label:'Check‑ins'},{k:'txcheckin',label:'Tx‑Check‑in'},{k:'cpcin',label:'CPCIN'},
   {k:'presencas',label:'Presenças'},{k:'cpp',label:'CPP'},
   {k:'vendas',label:'Vendas'},{k:'cac',label:'CAC'},{k:'fat',label:'Faturamento'},{k:'roas',label:'ROAS'},
-  {k:'link',label:'Link',dim:true},
+  {k:'link',label:'Link',dim:true,stk:'r'},
 ];
-function adRowCells(a,struct){
+function adRowCells(ad,a,struct){
   const d=derive(a), s=salesOf(a);
-  return {ad:a.ad, camp:struct.camp, adset:struct.adset,
+  return {ad, camp:struct.camp, adset:struct.adset,
     gasto:brl(d.gasto), im:intf(a.im), cpm:brl(d.cpm), ctr:pct(d.ctr),
     leads:intf(a.leads), cpl:brl(d.cpl), mqls:intf(a.mqls), tx:pct(d.tx), cpmql:brl(d.cpmql),
     checkins:intf(s.checkins), txcheckin:pct(s.txcheckin), cpcin:brl(s.cpcin),
     presencas:intf(s.presencas), cpp:brl(s.cpp),
     vendas:intf(s.vendas), cac:brl(s.cac), fat:brl(s.fat), roas:numf(s.roas),
-    link:adLinkCell(a.ad)};
+    link:adLinkCell(ad)};
 }
-/* tabela estática de 22 colunas (scroll lateral contido em .tbl-wrap) */
+const statusChip=obs=>obs?'<span class="rel-chip c-yellow">Em observação</span>':'<span class="rel-chip c-green">Avaliável</span>';
+/* tabela estática de 22+1 colunas (scroll lateral contido em .tbl-wrap;
+   Anúncio/Status/Link ficam sticky, sempre visíveis) */
 function relRenderAdTable(id,list){
   const el=document.getElementById(id); if(!el) return;
-  const th='<thead><tr>'+AD_COLS.map(c=>`<th class="${c.dim?'dim':''}">${c.label}</th>`).join('')+'</tr></thead>';
+  const th='<thead><tr>'+AD_COLS.map(c=>`<th class="${c.dim?'dim':''}${c.stk?' stk-'+c.stk:''}">${c.label}</th>`).join('')+'</tr></thead>';
   const body=list.length?list.map(item=>{
-    const cells=adRowCells(item.a,item.struct);
-    const badge=item.obs?'<span class="rel-obs">Em observação</span>':'';
+    const cells=adRowCells(item.ad,item.a,item.struct);
     return '<tr>'+AD_COLS.map(c=>{
-      const v=cells[c.k];
-      if(c.k==='ad')   return `<td class="dim" title="${escHtml(v)}"><b>${escHtml(v)}</b>${badge}</td>`;
-      if(c.k==='camp'||c.k==='adset') return `<td class="dim" title="${escHtml(v)}">${escHtml(v)}</td>`;
-      if(c.k==='link') return `<td class="dim">${v}</td>`;
-      return `<td>${v}</td>`;
+      const v=cells[c.k], cls=(c.dim?'dim':'')+(c.stk?' stk-'+c.stk:'');
+      if(c.k==='ad')     return `<td class="${cls}" title="${escHtml(v)}"><b>${escHtml(v)}</b></td>`;
+      if(c.k==='status') return `<td class="${cls}">${statusChip(item.obs)}</td>`;
+      if(c.k==='camp'||c.k==='adset') return `<td class="${cls}" title="${escHtml(v)}">${escHtml(v)}</td>`;
+      if(c.k==='link')   return `<td class="${cls}">${v}</td>`;
+      return `<td class="${cls}">${v}</td>`;
     }).join('')+'</tr>';
   }).join(''):`<tr><td class="dim" colspan="${AD_COLS.length}" style="color:var(--muted)">Sem anúncios com gasto no período.</td></tr>`;
   el.innerHTML=th+'<tbody>'+body+'</tbody>';
