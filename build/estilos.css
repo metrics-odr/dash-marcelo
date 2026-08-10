@@ -216,15 +216,14 @@
      (filtra a tabela/gráfico igual clicar na linha da tabela). Rola dentro de si
      mesma (vertical se houver muitos membros; horizontal se um nome for maior
      que a largura do painel) — nunca a página. */
-  .chart-legend{max-height:150px; overflow:auto; display:flex; flex-direction:column; gap:1px;
-    font-size:11.5px; border-top:1px solid var(--border); padding-top:6px}
+  .chart-legend{max-height:150px; overflow:auto; font-size:11.5px; border-top:1px solid var(--border); padding-top:6px}
   .chart-legend .cl-row{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px;
-    cursor:pointer; white-space:nowrap; width:max-content; min-width:100%}
+    cursor:pointer; white-space:nowrap}
   .chart-legend .cl-row:hover{background:var(--accent-blue-light)}
   .chart-legend .cl-row.sel{background:var(--selected); font-weight:700}
   .chart-legend .cl-swatch{width:10px; height:10px; border-radius:2px; flex:0 0 auto}
-  .chart-legend .cl-name{color:var(--ink)}
-  .chart-legend .cl-val{margin-left:auto; padding-left:18px; color:var(--muted); font-variant-numeric:tabular-nums; flex:0 0 auto; font-size:10.5px}
+  .chart-legend .cl-name{color:var(--ink); white-space:nowrap}
+  .chart-legend .cl-val{padding-left:14px; color:var(--muted); font-variant-numeric:tabular-nums; flex:0 0 auto; font-size:10.5px; white-space:nowrap}
 
   .note{font-size:11.5px; color:var(--muted); margin-top:10px}
   .foot{margin-top:26px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:12px}

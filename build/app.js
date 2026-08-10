@@ -319,14 +319,10 @@ function donutQlf(id, mqls, leads){
    Clique numa linha da legenda OU numa linha do gráfico filtra a tabela (selDim);
    quando a tabela já tem seleção (STATE.mSel*), o gráfico plota SÓ as linhas
    selecionadas (a legenda continua listando todas p/ dar pra trocar a seleção). */
-/* quebra um rótulo longo em várias linhas (p/ o tooltip do Chart.js NUNCA truncar o nome) */
-function wrapLabel(s,n){ s=String(s==null?'':s); const words=s.split(' '); const lines=[]; let cur='';
-  words.forEach(w=>{ if(cur && (cur+' '+w).length>n){ lines.push(cur); cur=w; } else cur=cur?cur+' '+w:w; });
-  if(cur) lines.push(cur); return lines.length?lines:['—']; }
-function mqlByDimChart(id, fL, agg, dim, selSet){
+function mqlByDimChart(id, fL, fM, agg, dim, selSet){
   destroy(id); const el=document.getElementById(id); const legEl=document.getElementById(id+'Legend');
   if(!el) return;
-  const days=[...new Set(fL.filter(r=>r.d).map(r=>r.d))].sort();
+  const days=[...new Set([...fL,...fM].filter(r=>r.d).map(r=>r.d))].sort();
   // ordena por CPMQL (melhor primeiro; sem MQL/gasto fica no fim) — ordem estável p/ cor e legenda
   const members=[...new Set(fL.map(r=>r[dim]))].sort((a,b)=>{
     const ca=agg[a]?derive(agg[a]).cpmql:null, cb=agg[b]?derive(agg[b]).cpmql:null;
@@ -337,12 +333,15 @@ function mqlByDimChart(id, fL, agg, dim, selSet){
   // com seleção ativa nesta MESMA dimensão, o GRÁFICO plota só as linhas selecionadas
   // (a legenda abaixo continua mostrando todos os membros, pra dar pra trocar a seleção)
   const plotMembers = (selSet&&selSet.size) ? members.filter(m=>selSet.has(m)) : members;
+  // métrica do gráfico: CUSTO POR MQL por dia (gasto do dia / MQLs do dia), não contagem
   const dsets=plotMembers.map(mv=>{
     const idx=members.indexOf(mv);
-    const byDay={}; days.forEach(d=>byDay[d]=0);
-    fL.forEach(r=>{ if(r[dim]===mv && r.d!=null && byDay[r.d]!=null) byDay[r.d]+=r.q; });
+    const spDay={}, mqlDay={}; days.forEach(d=>{spDay[d]=0; mqlDay[d]=0;});
+    fM.forEach(r=>{ if(r[dim]===mv && r.d!=null && spDay[r.d]!=null) spDay[r.d]+=r.sp; });
+    fL.forEach(r=>{ if(r[dim]===mv && r.d!=null && mqlDay[r.d]!=null) mqlDay[r.d]+=r.q; });
+    const data=days.map(d=> mqlDay[d]>0 ? +((spDay[d]*taxf())/mqlDay[d]).toFixed(2) : null);
     const col=pal[idx%pal.length];
-    return {label:String(mv), data:days.map(d=>byDay[d]), borderColor:col, backgroundColor:col, borderWidth:2, pointRadius:2, tension:.25, spanGaps:true};
+    return {label:String(mv), data, borderColor:col, backgroundColor:col, borderWidth:2, pointRadius:2, tension:.25, spanGaps:true};
   });
   charts[id]=new Chart(el,{type:'line',
     data:{labels:days.map(d=>d.slice(5)), datasets:dsets},
@@ -352,12 +351,13 @@ function mqlByDimChart(id, fL, agg, dim, selSet){
         if(idx!=null&&dsets[idx]) selDim(dimChar,dsets[idx].label,false); } },
       plugins:{
         legend:{display:false},   // legenda nativa desligada — usamos o painel HTML abaixo
-        // tooltip mostra o NOME COMPLETO (quebrado em linhas, sem truncar) + MQLs do dia
+        // tooltip: nome COMPLETO do dataset (nunca o rótulo do eixo X) + CPMQL do dia.
+        // usa array (2 linhas por item) — o Chart.js NUNCA corta/trunca texto do tooltip.
         tooltip:{displayColors:true,
-          callbacks:{title:it=>it.length?wrapLabel(it[0].dataset.label,44):'', label:c=>c.label+': '+intf(c.raw)+' MQLs'}}
+          callbacks:{title:()=>'', label:c=>[c.dataset.label, (c.raw==null?'-':brl(c.raw))+' / MQL']}}
       },
       scales:{x:{ticks:{color:mut,font:{size:9}},grid:{display:false}},
-        y:{ticks:{color:mut,font:{size:9},precision:0},grid:{color:cgrid()},beginAtZero:true}}
+        y:{ticks:{color:mut,font:{size:9},callback:v=>'R$'+nf0.format(v)},grid:{color:cgrid()},beginAtZero:true}}
     }
   });
   // painel de legenda HTML: quadrado da cor | nome completo (1 linha, nunca corta) | CPMQL
@@ -638,7 +638,7 @@ function renderRelAds(){
 
   relRenderAdTable('relTop',all);
   document.getElementById('relTopCount').textContent =
-    champs+' campeão'+(champs===1?'':'es')+' de '+all.length+' anúncio'+(all.length===1?'':'s')+' com gasto';
+    champs+' '+(champs===1?'campeão':'campeões')+' de '+all.length+' anúncio'+(all.length===1?'':'s')+' com gasto';
 }
 
 /* nota de referência do painel de metas (mostra as metas ativas + legenda de cor) */
@@ -780,9 +780,9 @@ function renderMeta(){
   // Mar03/Mar10: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha
   // por membro, com legenda própria (cor · nome completo · CPMQL) e filtro bidirecional
   // com a tabela (STATE.mSel* determina quais linhas o gráfico plota).
-  mqlByDimChart('chCamp', Sc.fL, aggC, 'camp', STATE.mSelC);
-  mqlByDimChart('chAdset', Sa.fL, aggA, 'adset', STATE.mSelA);
-  mqlByDimChart('chAd', Sd.fL, aggD, 'ad', STATE.mSelAd);
+  mqlByDimChart('chCamp', Sc.fL, Sc.fM, aggC, 'camp', STATE.mSelC);
+  mqlByDimChart('chAdset', Sa.fL, Sa.fM, aggA, 'adset', STATE.mSelA);
+  mqlByDimChart('chAd', Sd.fL, Sd.fM, aggD, 'ad', STATE.mSelAd);
 
   // qualified leads
   const q=fL.filter(l=>l.q).sort((a,b)=>(a.d<b.d?1:-1));
