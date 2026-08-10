@@ -1,0 +1,40 @@
+name: Rotina Diária de Briefings com Gemini
+
+on:
+  schedule:
+    # Executa todos os dias às 23:59 BRT (02:59 UTC do dia seguinte)
+    - cron: '59 2 * * *'
+  workflow_dispatch: # Permite disparar manualmente clicando em um botão
+
+jobs:
+  atualizar-briefings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          pip install google-genai
+
+      - name: Executar geração de briefings com Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/gerar_briefing_gemini.py
+
+      - name: Commitar e fazer Push na main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build/relatorios.json
+          git commit -m "Atualiza briefings do Gestor (rotina diária via Gemini API)" || exit 0
+          git push origin main
