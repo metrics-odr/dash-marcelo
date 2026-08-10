@@ -49,34 +49,32 @@ Sua tarefa:
 5. Retorne APENAS um objeto JSON válido mantendo a estrutura exata de build/relatorios.json, sem textos ou comentários fora do JSON.
 """
 
-# 4. Chamada da API com Fallback e Retries para evitar erro 429
-modelos_para_testar = ["gemini-1.5-flash", "gemini-1.5-pro"]
+# 4. Chamada da API testando os modelos válidos da geração 2.x
+modelos_validos = ["gemini-2.5-flash", "gemini-2.0-flash"]
 response = None
 
-for modelo in modelos_para_testar:
-    for tentativa in range(3):
-        try:
-            print(f"Tentando gerar relatório com {modelo} (tentativa {tentativa + 1})...")
-            response = client.models.generate_content(
-                model=modelo,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2
-                )
+for modelo in modelos_validos:
+    try:
+        print(f"Tentando gerar relatório com {modelo}...")
+        response = client.models.generate_content(
+            model=modelo,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2
             )
-            if response:
-                break
-        except Exception as e:
-            print(f"Aviso no modelo {modelo}: {e}")
-            time.sleep(10) # Aguarda 10 segundos caso seja rate-limit
-    if response:
-        break
+        )
+        if response and response.text:
+            print(f"✅ Sucesso com o modelo {modelo}!")
+            break
+    except Exception as e:
+        print(f"Aviso no modelo {modelo}: {e}")
+        time.sleep(5)
 
-if not response:
-    raise RuntimeError("ERRO: Não foi possível obter resposta da API do Gemini após várias tentativas.")
+if not response or not response.text:
+    raise RuntimeError("ERRO: Não foi possível obter resposta válida da API do Gemini.")
 
-# 5. Tratamento para remoção de formatação Markdown caso retorne
+# 5. Tratamento de Markdown
 raw_text = response.text.strip()
 if raw_text.startswith("```"):
     raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
