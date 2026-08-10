@@ -507,34 +507,55 @@ const AD_COLS=[
 function adRowCells(ad,a,struct){
   const d=derive(a), s=salesOf(a);
   return {ad, camp:struct.camp, adset:struct.adset,
-    gasto:brl(d.gasto), im:intf(a.im), cpm:brl(d.cpm), ctr:pct(d.ctr),
-    leads:intf(a.leads), cpl:brl(d.cpl), mqls:intf(a.mqls), tx:pct(d.tx), cpmql:brl(d.cpmql),
-    checkins:intf(s.checkins), txcheckin:pct(s.txcheckin), cpcin:brl(s.cpcin),
-    presencas:intf(s.presencas), cpp:brl(s.cpp),
-    vendas:intf(s.vendas), cac:brl(s.cac), fat:brl(s.fat), roas:numf(s.roas),
+    gasto:d.gasto, im:a.im, cpm:d.cpm, ctr:d.ctr,
+    leads:a.leads, cpl:d.cpl, mqls:a.mqls, tx:d.tx, cpmql:d.cpmql,
+    checkins:s.checkins, txcheckin:s.txcheckin, cpcin:s.cpcin,
+    presencas:s.presencas, cpp:s.cpp,
+    vendas:s.vendas, cac:s.cac, fat:s.fat, roas:s.roas,
     link:adLinkCell(ad),
-    _cpmql:d.cpmql, _cac:s.cac};   // valores crus p/ colorir vs meta
+    _cpmql:d.cpmql, _cac:s.cac, status:null};   // valores crus p/ colorir vs meta
 }
 const statusChip=obs=>obs?'<span class="rel-chip c-yellow">Em observação</span>':'<span class="rel-chip c-green">Avaliável</span>';
-/* tabela estática de 22+1 colunas (scroll lateral contido em .tbl-wrap;
-   Anúncio/Status/Link ficam sticky, sempre visíveis) */
 function relRenderAdTable(id,list){
   const el=document.getElementById(id); if(!el) return;
-  const th='<thead><tr>'+AD_COLS.map(c=>`<th class="${c.dim?'dim':''}${c.stk?' stk-'+c.stk:''}">${c.label}</th>`).join('')+'</tr></thead>';
-  const body=list.length?list.map(item=>{
+  const cols=[
+    {key:'ad',label:'Anúncio',type:'dim',big:true},{key:'status',label:'Status',type:'dim'},
+    {key:'camp',label:'Campanha',type:'dim',big:true},{key:'adset',label:'Conjunto',type:'dim',big:true},
+    {key:'gasto',label:'Gasto',type:'brl'},{key:'im',label:'Impr.',type:'int'},
+    {key:'cpm',label:'CPM',type:'brl'},{key:'ctr',label:'CTR',type:'pct'},
+    {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
+    {key:'mqls',label:'MQLs',type:'int'},{key:'tx',label:'Tx‑MQL',type:'pct'},
+    {key:'cpmql',label:'CPMQL',type:'brl'},
+    {key:'checkins',label:'Check‑ins',type:'int'},
+    {key:'txcheckin',label:'Tx‑Check‑in',type:'pct'},
+    {key:'cpcin',label:'CPCIN',type:'brl'},
+    {key:'presencas',label:'Presenças',type:'int'},
+    {key:'cpp',label:'CPP',type:'brl'},
+    {key:'vendas',label:'Vendas',type:'int'},
+    {key:'cac',label:'CAC',type:'brl'},
+    {key:'fat',label:'Faturamento',type:'brl'},
+    {key:'roas',label:'ROAS',type:'num'},
+    {key:'link',label:'Link',type:'dim'},
+  ];
+  const rows=list.map(item=>{
     const cells=adRowCells(item.ad,item.a,item.struct);
-    return '<tr>'+AD_COLS.map(c=>{
-      const v=cells[c.k], cls=(c.dim?'dim':'')+(c.stk?' stk-'+c.stk:'');
-      if(c.k==='ad')     return `<td class="${cls}" title="${escHtml(v)}"><b>${escHtml(v)}</b></td>`;
-      if(c.k==='status') return `<td class="${cls}">${statusChip(item.obs)}</td>`;
-      if(c.k==='camp'||c.k==='adset') return `<td class="${cls}" title="${escHtml(v)}">${escHtml(v)}</td>`;
-      if(c.k==='link')   return `<td class="${cls}">${v}</td>`;
-      if(c.k==='cpmql'){ const mc=metaColorClass(cells._cpmql,METAS.cpmql); return `<td class="${cls}${mc?' '+mc:''}">${v}</td>`; }
-      if(c.k==='cac'){   const mc=metaColorClass(cells._cac,METAS.cac);     return `<td class="${cls}${mc?' '+mc:''}">${v}</td>`; }
-      return `<td class="${cls}">${v}</td>`;
-    }).join('')+'</tr>';
-  }).join(''):`<tr><td class="dim" colspan="${AD_COLS.length}" style="color:var(--muted)">Sem anúncios com gasto no período.</td></tr>`;
-  el.innerHTML=th+'<tbody>'+body+'</tbody>';
+    cells.status='';  // placeholder; será substituído depois
+    return {k:item.ad, cells, _obs:item.obs, _cpmql:cells._cpmql, _cac:cells._cac};
+  });
+  renderTable({id, cols, rows, center:false});
+  // pós-renderização: adicionar chips de status e colorir CPMQL/CAC
+  el.querySelectorAll('tbody tr').forEach((tr,idx)=>{
+    const item=rows[idx];
+    if(!item) return;
+    const tds=tr.querySelectorAll('td');
+    cols.forEach((c,ci)=>{
+      if(ci>=tds.length) return;
+      const td=tds[ci];
+      if(c.key==='status') td.innerHTML=statusChip(item._obs);
+      if(c.key==='cpmql'){ const mc=metaColorClass(item._cpmql,METAS.cpmql); if(mc) td.classList.add(mc); }
+      if(c.key==='cac'){ const mc=metaColorClass(item._cac,METAS.cac); if(mc) td.classList.add(mc); }
+    });
+  });
 }
 
 function relBriefKey(){ if(STATE.selDays.size) return null; return STATE.preset||null; }
@@ -571,9 +592,7 @@ function renderRelAds(){
     .slice(0,TOP_ADS_N).map(it=>({...it, obs:!adSampleOk(it.a)}));
 
   relRenderAdTable('relTop',top);
-  relRenderAdTable('relWorst',worst);
   document.getElementById('relTopCount').textContent=top.length+' anúncios';
-  document.getElementById('relWorstCount').textContent=worst.length+' anúncios';
 }
 
 /* nota de referência do painel de metas (mostra as metas ativas + legenda de cor) */
