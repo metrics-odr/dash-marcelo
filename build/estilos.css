@@ -232,14 +232,21 @@
   .rel-chip.c-green{color:var(--good); background:color-mix(in srgb,var(--good) 12%,transparent)}
   .rel-chip.c-yellow{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%,transparent)}
 
-  /* tabelas Top/Piores anúncios (22 colunas): largura automática + scroll lateral
-     contido na .tbl-wrap (NÃO usa table-layout fixed) */
+  /* tabelas Top/Piores anúncios (22 colunas + Status): largura automática + scroll
+     lateral contido na .tbl-wrap (NÃO usa table-layout fixed). Anúncio, Status e
+     Link ficam FIXOS (position:sticky) nas bordas — sempre visíveis, sem precisar
+     rolar — só as métricas do meio rolam, como planilha com colunas congeladas. */
   table.dt.rel-adt{table-layout:auto; min-width:max-content; width:auto}
   table.dt.rel-adt th, table.dt.rel-adt td{overflow:visible; text-overflow:clip}
   table.dt.rel-adt td.dim{max-width:230px; overflow:hidden; text-overflow:ellipsis}
   table.dt.rel-adt tbody tr{cursor:default}
-  .rel-obs{display:inline-block; margin-left:7px; font-size:10px; font-weight:700; padding:1px 7px; border-radius:999px;
-    color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%,transparent); white-space:nowrap}
+  table.dt.rel-adt .stk-l1, table.dt.rel-adt .stk-l2, table.dt.rel-adt .stk-r{position:sticky; z-index:1}
+  table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-l2, table.dt.rel-adt thead .stk-r{z-index:3}
+  table.dt.rel-adt .stk-l1{left:0; width:190px; min-width:190px; max-width:190px}
+  table.dt.rel-adt .stk-l2{left:190px; width:120px; min-width:120px; max-width:120px; border-right:1px solid var(--border)}
+  table.dt.rel-adt .stk-r{right:0; width:88px; min-width:88px; max-width:88px; border-left:1px solid var(--border)}
+  table.dt.rel-adt tbody .stk-l1, table.dt.rel-adt tbody .stk-l2, table.dt.rel-adt tbody .stk-r{background:var(--surface)}
+  table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-l2, table.dt.rel-adt thead .stk-r{background:var(--thead)}
   .rel-adlink{font-size:12px; font-weight:600; color:var(--accent-blue); text-decoration:none; white-space:nowrap}
   .rel-adlink:hover{text-decoration:underline}
   .rel-adlink.off{color:var(--muted); font-weight:400}
