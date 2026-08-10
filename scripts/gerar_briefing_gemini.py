@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from google import genai
 from google.genai import types
 
@@ -48,15 +49,32 @@ Sua tarefa:
 5. Retorne APENAS um objeto JSON válido mantendo a estrutura exata de build/relatorios.json, sem textos ou comentários fora do JSON.
 """
 
-# 4. Chamada da API do Gemini (usando modelo válido)
-response = client.models.generate_content(
-    model="gemini-2.0-flash",
-    contents=prompt,
-    config=types.GenerateContentConfig(
-        response_mime_type="application/json",
-        temperature=0.2
-    )
-)
+# 4. Chamada da API com Fallback e Retries para evitar erro 429
+modelos_para_testar = ["gemini-1.5-flash", "gemini-1.5-pro"]
+response = None
+
+for modelo in modelos_para_testar:
+    for tentativa in range(3):
+        try:
+            print(f"Tentando gerar relatório com {modelo} (tentativa {tentativa + 1})...")
+            response = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2
+                )
+            )
+            if response:
+                break
+        except Exception as e:
+            print(f"Aviso no modelo {modelo}: {e}")
+            time.sleep(10) # Aguarda 10 segundos caso seja rate-limit
+    if response:
+        break
+
+if not response:
+    raise RuntimeError("ERRO: Não foi possível obter resposta da API do Gemini após várias tentativas.")
 
 # 5. Tratamento para remoção de formatação Markdown caso retorne
 raw_text = response.text.strip()
