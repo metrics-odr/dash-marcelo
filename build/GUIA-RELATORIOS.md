@@ -1,0 +1,183 @@
+# GUIA — Briefing do Gestor da aba Relatório (funil de evento presencial High Ticket)
+
+> Lido pela rotina/IA que redige `build/relatorios.json`. **Não usa a API paga da
+> Anthropic no build nem no navegador** — a página só exibe o texto já pronto.
+> Os números vêm dos mesmos dados do site (Meta Ads × Leads); a IA apenas
+> **interpreta e redige**. A aba Relatório espelha a Visão Geral e, abaixo,
+> mostra **Top Anúncios · Piores Anúncios · Briefing do Gestor**.
+
+## Contexto do funil
+
+Funil de aquisição para um **evento presencial gratuito** destinado a empresários
+seletos. Captação por **Lead Ads** (formulário nativo da Meta), podendo futuramente
+usar página de captura. Fluxo:
+
+```
+Impressões → Cliques/abertura do formulário → Leads → MQLs → Check-ins → Presenças → Vendas → Faturamento
+```
+
+- **MQL** = advogados, contadores, representantes comerciais **ou** quem fatura
+  **> R$ 30 mil/mês** (coluna N da aba Leads; ver `build.py` → `is_qualified`).
+- **Check-in** = vaga confirmada pelo comercial **antes** do evento.
+- **Presença** = comparecimento efetivo, validado no local.
+
+> **Estado atual dos dados:** hoje só há **Meta Ads × Leads**, então o funil vai
+> até **MQL**. **Check-ins, Presenças, Vendas e Faturamento** (e as métricas
+> derivadas: Tx-Check-in, CPCIN, Tx-Presença, CPP, Tx-Venda, CAC, ROAS, Ticket)
+> aparecem como “-” até chegar a lista do comercial/evento. Quando os campos
+> `checkins`/`presencas`/`vendas`/`fat` forem somados por linha em
+> `buildAgg/daily/totals`, **toda a UI acende sozinha** (funil, tabelas, Top/Piores).
+
+## Fórmulas fundamentais
+
+- **Tx MQL** = MQLs ÷ Leads · **CPMQL** = Investimento ÷ MQLs
+- **Tx Check-in** = Check-ins ÷ MQLs · **CPCIN** = Investimento ÷ Check-ins
+- **Tx Presença** = Presenças ÷ Check-ins · **CPP** = Investimento ÷ Presenças
+- **Tx Venda** = Vendas ÷ Presenças · **CAC** = Investimento ÷ Vendas
+- **ROAS** = Faturamento ÷ Investimento · **Ticket** = Faturamento ÷ Vendas
+- Conversões acumuladas úteis: Lead→Check-in, Lead→Presença, Lead→Venda,
+  MQL→Presença, MQL→Venda, Check-in→Venda.
+
+Regra de ouro: **acumulativas somam** (impressões, cliques, leads, MQLs, gasto);
+**derivadas recalculam dos totais** (nunca some percentuais).
+
+## Princípio de interpretação
+
+Trate cada métrica como **diagnóstico probabilístico**, nunca regra absoluta.
+Uma métrica ruim raramente identifica sozinha a causa. Leia **sempre** com a etapa
+anterior e a posterior, o histórico, o **volume da amostra** e o **tempo de
+maturação**. O objetivo não é o menor CPL nem o maior volume de leads — é gerar
+**empresários qualificados que confirmem, compareçam e comprem**.
+
+**CPMQL, CPCIN, CPP, CAC e ROAS são resultados acumulados (efeito), não causas.**
+Ao ver um deles ruim, aponte a **etapa** que perdeu eficiência — não recomende
+“reduzir o CAC/CPP/ROAS” de forma abstrata.
+
+### Leitura por etapa (resumo)
+- **CTR** (Cliques/Impressões): interesse do criativo. CTR baixo **pode ser bom**
+  se qualifica melhor (CPMQL/CPP/CAC saudáveis). Só é problema junto de custo ruim.
+- **CPL**: custo do cadastro. CPL alto pode ser saudável se gera mais MQL/presença.
+  CPL baixo pode ser ruim se atrai gente fora do ICP.
+- **Tx MQL / CPMQL**: mídia+criativo+form atraindo o perfil certo. Tx alta com
+  pouco volume pode ser segmentação estreita ou critério permissivo — o MQL só
+  vale se avançar para check-in, presença e venda.
+- **Tx Check-in / CPCIN**: qualidade do MQL + atratividade do evento + eficiência
+  do comercial (tempo até 1º contato, taxa de contato, tentativas, script).
+- **Tx Presença / CPP**: compromisso após a confirmação (reconfirmação, lembretes,
+  logística, valor percebido). **CPP é uma das principais métricas operacionais.**
+- **Tx Venda / CAC / Ticket / ROAS**: qualidade real da sala + oferta + pitch +
+  follow-up + maturação (venda high-ticket costuma fechar dias depois).
+
+### Heurísticas obrigatórias
+- CTR baixo + CPMQL/CPP/CAC saudáveis → o anúncio qualifica melhor (não mexer).
+- CPL baixo + Tx MQL baixa → mídia atraindo fora do ICP.
+- Tx MQL boa + Tx Check-in baixa → investigar **comercial**/disponibilidade/script,
+  não o tráfego automaticamente.
+- Tx Check-in boa + Tx Presença baixa → confirmação/lembretes/logística.
+- Tx Presença boa + Tx Venda baixa → sala/conteúdo/pitch/oferta/follow-up
+  (sala cheia ≠ sala qualificada).
+- CPMQL bom + CPCIN ruim → perda entre qualificação e confirmação.
+- CPCIN bom + CPP ruim → perda entre confirmação e comparecimento.
+- CPP bom + CAC ruim → perda entre evento e venda.
+- Evento recente + ROAS baixo → verificar **maturação** antes de julgar.
+- Só uma campanha piorou → investigar a própria (segmentação/criativo), não geral.
+
+## Top Anúncios e Piores Anúncios (o que a tabela já faz)
+
+A aba calcula sozinha, por anúncio (com gasto no período):
+- **Top**: ranqueado pelo **resultado mais profundo disponível** (Venda → Presença →
+  Check-in → MQL), maior volume + menor custo, **amostra relevante primeiro**.
+  Anúncio promissor **sem amostra suficiente** entra marcado **“Em observação”** —
+  nunca é “vencedor” só por 1 resultado com pouco gasto.
+- **Piores**: só anúncios com **investimento relevante** e resultado profundo
+  fraco / custo pior que a média; **nunca** por CTR/CPM/CPL isolados. Sem amostra
+  suficiente → **“Em observação”**, não “ruim”.
+- Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`, `TOP_ADS_N`.
+- **Link** abre o criativo no Instagram (coluna *Creative Instagram Permalink* da
+  aba Meta Ads → `ad_links`).
+
+O briefing deve **explicar** o ranking (por quê), não repeti-lo.
+
+## Estrutura esperada do briefing (por período)
+
+Escreva em português, **profundo mas sem enrolação**, pouco técnico. Para cada
+período redija:
+
+1. **Resumo executivo** — investimento; leads/MQLs/check-ins/presenças/vendas;
+   principal avanço; principal gargalo; prioridade atual.
+2. **Diagnóstico do funil** — em qual etapa está a **maior perda** (não escolha
+   a menor taxa automaticamente; pese volume absoluto perdido, meta, histórico,
+   impacto financeiro, maturação, capacidade da sala e facilidade de correção).
+3. **Diagnóstico de mídia** — quais campanhas/conjuntos/anúncios puxam resultado;
+   quais gastam sem resultado profundo; mudanças em CPM/CTR/CPL/frequência;
+   fadiga/saturação/público; e se o problema de mídia realmente afeta as etapas
+   seguintes.
+4. **Diagnóstico comercial** — quando MQL/CPMQL saudáveis mas Tx Check-in ruim:
+   tempo até 1º contato, taxa de contato, tentativas, canais, script, objeções,
+   disponibilidade, distância, interesse real, critério de MQL, atendente.
+5. **Diagnóstico de presença** — quando Tx Check-in ok mas presença baixa:
+   confirmação/antecedência/lembretes/reconfirmação/logística/clima/valor percebido.
+6. **Diagnóstico de vendas** — quando presença boa mas venda baixa: qualidade da
+   sala, profissões/faixas, aderência tema↔oferta, conteúdo, pitch, oferta, provas,
+   condições, follow-up, maturação.
+7. **Recomendações** — cada uma com: (a) o que fazer; (b) em qual estrutura/etapa;
+   (c) quais métricas justificam; (d) resultado esperado; (e) métrica de validação.
+   Prefira escala **gradual (10–20%)** e só com amostra/estabilidade/maturação.
+
+### Formato dos insights (use as 4 tags)
+`Prioridade (alta/média/baixa) · Etapa (mídia/qualificação/comercial/presença/
+evento/vendas) · Nível (conta/campanha/conjunto/anúncio/funil) · Diagnóstico ·
+Evidências · Interpretação sistêmica · Ação · Validação · Confiança.`
+
+Tags de ação (chips coloridos): **`Escalar`** (vencedor claro, escala gradual) ·
+**`Otimizar`** (converte mas tem ajuste óbvio antes de escalar/cortar) ·
+**`Cortar`** (só gasta, já teve gasto para julgar) · **`Observar`** (amostra/tempo
+insuficiente). Ao citar um anúncio (ex. “AD07”), **sempre** diga a campanha (e o
+conjunto quando ajudar) — o mesmo nome de anúncio pode rodar em campanhas diferentes.
+
+## Comparações e segurança analítica
+
+Compare o período com: período anterior de mesma duração; média histórica;
+metas; outras campanhas/conjuntos/anúncios. Ao apontar variação, mostre valor
+atual, anterior, variação absoluta e %, e o impacto no funil. **Não invente**
+métricas/benchmarks; **não** trate ausência de dado como zero; **não** compare
+janelas de maturação diferentes; **não** penalize leads recentes ainda não
+trabalhados; **não** recomende cortar/escalar com amostra insuficiente; **não**
+culpe o tráfego por perda que acontece depois do MQL, nem o comercial se o MQL
+estiver ruim.
+
+## Lead Ads × Página de captura (para o futuro)
+
+Se entrar página de captura, inclua **Connect Rate** (visitas ÷ cliques) e
+**Conversão da página** (leads ÷ visitas), e compare os métodos por CPMQL, CPCIN,
+CPP, CAC, volume de presenças, faturamento e ROAS — **nunca só por CPL/Tx MQL**.
+
+## Formato de `build/relatorios.json`
+
+```json
+{
+  "generated_at": "DD/MM/AAAA HH:MM",
+  "fonte": "Gerado automaticamente a partir dos dados do funil (Meta Ads × Leads).",
+  "periodos": {
+    "hoje":    {"html": "<h3>Resumo executivo</h3><p>…</p>…"},
+    "ontem":   {"html": "…"},
+    "3d":      {"html": "…"},
+    "7d":      {"html": "…"},
+    "14d":     {"html": "…"},
+    "30d":     {"html": "…"},
+    "mes":     {"html": "…"},
+    "mespass": {"html": "…"},
+    "todo":    {"html": "…"}
+  }
+}
+```
+
+- **Chaves de período fixas** (mesmos ids do seletor da topbar). O briefing só
+  aparece nos períodos predefinidos; em intervalo personalizado ou dias
+  selecionados a aba mostra uma mensagem orientando a escolher um preset.
+- HTML permitido no `html`: `<h3> <p> <ul> <li> <b>` e
+  `<span class="tag escala|otimiza|corte|observar">Escalar|Otimizar|Cortar|Observar</span>`
+  (a classe de “Otimizar” é `otimiza`, não `otimizar`).
+- Se um período não tiver dados, escreva um `html` curto dizendo que não houve
+  investimento/atividade. Se o arquivo não existir, a aba mostra tudo menos o
+  briefing (cards/tabelas seguem funcionando).

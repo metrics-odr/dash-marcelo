@@ -41,16 +41,44 @@ CPM, CPMQL, CAC…). Constante `TAX_FACTOR` em `build.py` e `TAX` no template.
 ## Arquitetura / arquivos
 
 ```
-build/build.py            # lê os 2 CSVs (read-only), emite REGISTROS BRUTOS (leads[]/meta[]); render() COSTURA os 4 arquivos abaixo
+build/build.py            # lê os 2 CSVs (read-only), emite REGISTROS BRUTOS (leads[]/meta[]/ad_links); render() COSTURA os 4 arquivos abaixo
 build/template.html       # esqueleto HTML. Placeholders __STYLES__, __APP_JS__, __DATA_JSON__, __BUILD_ID__, __GENERATED_BRT__
 build/identidade-visual.css  # TODAS as cores (tema claro=padrão / escuro). Mexa AQUI p/ trocar só cor
-build/estilos.css         # layout/componentes (sidebar, topbar, period-picker, funil, tabelas, gráficos)
-build/app.js              # lógica + renderização (KPIs, funil, tabelas, filtro cruzado, period-picker, heatmap)
+build/estilos.css         # layout/componentes (sidebar, topbar, period-picker, funil, tabelas, gráficos, aba Relatório)
+build/app.js              # lógica + renderização (KPIs, funil, tabelas, filtro cruzado, period-picker, heatmap, Relatório)
+build/relatorios.json     # briefings do Gestor por período (aba Relatório) — VERSIONADO; lido no build, sem API
+build/GUIA-RELATORIOS.md  # guia de métricas do funil + como redigir os briefings da aba Relatório
 .github/workflows/deploy.yml  # roda build.py e publica no Pages (workflow_dispatch + schedule + push)
 dist/index.html           # saída gerada (gitignored; o Actions reconstrói)
 GUIA-REPLICACAO.md        # como replicar este modelo para outros relatórios
 SETUP-CRON.md             # valores exatos do cron-job.org
 ```
+
+### Aba Relatório (funil de evento presencial High Ticket)
+Terceira página (sidebar, entre Meta Ads e o rodapé). **Espelha a Visão Geral**
+(mesmo funil/KPIs/gráficos/tabela diária, via `renderGeralCore(REL_IDS)`) e, abaixo,
+acrescenta 3 blocos novos:
+- **Top Anúncios** e **Piores Anúncios** — 22 colunas (Anúncio · Campanha · Conjunto ·
+  Gasto · Impr · CPM · CTR · Leads · CPL · MQLs · Tx‑MQL · CPMQL · Check‑ins · Tx‑Check‑in ·
+  CPCIN · Presenças · CPP · Vendas · CAC · Faturamento · ROAS · **Link**). Ranking pelo
+  **resultado mais profundo disponível** (Venda→Presença→Check‑in→MQL), amostra relevante
+  primeiro; sem amostra → badge **“Em observação”** (nunca “vencedor”/“ruim” por 1 resultado
+  ou por CTR/CPM/CPL isolados). Limiares em `build.py`: `SAMPLE_MIN_SPEND`, `SAMPLE_MIN_MQLS`,
+  `TOP_ADS_N`. Scroll lateral **contido na tabela** (`.rel-adt` → `table-layout:auto`).
+- **Briefing do Gestor** — texto interpretativo por período, **pré-gerado por IA** e lido de
+  `build/relatorios.json` (sem chamada de API no build/navegador). Chaves de período fixas
+  (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags `Escalar/Otimizar/Cortar/Observar`.
+  Regras de escrita e interpretação do funil em `build/GUIA-RELATORIOS.md`.
+
+Funil completo do evento: `Impressões → Cliques → Leads → MQLs → Check-ins → Presenças →
+Vendas → Faturamento`. Hoje só há Meta×Leads (vai até MQL); Check-ins/Presenças/Vendas/Fat
+aparecem “-” até chegar a lista do comercial/evento — quando os campos `checkins`/`presencas`/
+`vendas`/`fat` forem somados em `buildAgg/daily/totals`, `salesOf()` acende tudo sozinho.
+
+### Link do criativo (aba Meta Ads)
+`build.py` lê a coluna **Creative Instagram Permalink** da aba Meta Ads → mapa
+`ad_links` (anúncio → 1 permalink). Usado no “Link” das tabelas Top/Piores (abre em
+nova aba). Sem a coluna, o link vira “—”.
 
 > **Layout modular (repaginação inspirada no dash da Larissa/Código da Rainha):** o front-end
 > foi separado em `identidade-visual.css` + `estilos.css` + `app.js`, costurados por `render()`
@@ -117,7 +145,7 @@ em `/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`.
 
 ## Especificação funcional (resumo das regras do cliente)
 
-Duas **páginas separadas** (sidebar, sem rolar entre elas):
+Três **páginas separadas** (sidebar, sem rolar entre elas):
 1. **Visão Geral de Leads** — **funil vertical** (Gasto → Impressões → Cliques → Leads →
    MQLs → Vendas/Faturamento = "-", com CPM/CTR/CPC/CPL/ConvForm/Tx‑MQL/CPMQL inline) +
    **KPIs secundários** (Leads/MQLs Ads, Tx‑MQL Ads, Impressões, Cliques, CPM, Leads s/UTM,
@@ -126,6 +154,9 @@ Duas **páginas separadas** (sidebar, sem rolar entre elas):
 2. **Captura Meta Ads** — funil em etapas; combinado diário; barras por utm_content;
    **tabela diária com heatmap (só Meta)**; **3 tabelas hierárquicas** Campanha →
    Conjunto → Anúncio, cada uma com **gráfico de linha colado embaixo**.
+3. **Relatório** — espelha a Visão Geral e acrescenta **Top Anúncios · Piores Anúncios**
+   (22 colunas com link do criativo) + **Briefing do Gestor** (texto por IA de
+   `relatorios.json`). Ver seção "Aba Relatório" acima e `build/GUIA-RELATORIOS.md`.
 
 **Ordem das colunas nas tabelas de heatmap/hierarquia:**
 `Data · Dia · Gasto · CPM · CTR · ConvForm(=Leads/Cliques) · Leads · CPL · Tx‑MQL · MQLs · CPMQL`
