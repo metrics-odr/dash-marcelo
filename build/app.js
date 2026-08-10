@@ -418,6 +418,36 @@ const SAMPLE_MIN_SPEND = (B.sample_min_spend!=null?B.sample_min_spend:100);
 const SAMPLE_MIN_MQLS  = (B.sample_min_mqls!=null?B.sample_min_mqls:3);
 const TOP_ADS_N        = (B.top_ads_n!=null?B.top_ads_n:10);
 const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ---- Metas & parâmetros (painel editável) — ajusta cores/amostra AO VIVO ----
+   Defaults vêm do build.py; o usuário edita no painel (persistido em
+   localStorage 'dm_metas') e as tabelas de anúncio recoram CPMQL/CAC e reavaliam
+   a amostra na hora. Meta null = "não definida" (métrica fica sem cor). */
+const METAS_DEFAULT = {
+  cpmql: (B.meta_cpmql!=null?B.meta_cpmql:null),
+  cac:   (B.meta_cac!=null?B.meta_cac:null),
+  volMin:(B.volume_min_amostral!=null?B.volume_min_amostral:SAMPLE_MIN_MQLS),
+  nDias: (B.n_dias_corte!=null?B.n_dias_corte:5),
+};
+function loadMetas(){
+  let saved={}; try{ saved=JSON.parse(localStorage.getItem('dm_metas')||'{}'); }catch(e){}
+  const m={...METAS_DEFAULT};
+  ['cpmql','cac'].forEach(k=>{ if(saved[k]!=null&&isFinite(saved[k])) m[k]=saved[k]; else if(k in saved && saved[k]===null) m[k]=null; });
+  if(saved.volMin!=null&&isFinite(saved.volMin)&&saved.volMin>=1) m.volMin=saved.volMin;
+  if(saved.nDias!=null&&isFinite(saved.nDias)&&saved.nDias>=1) m.nDias=saved.nDias;
+  return m;
+}
+const METAS = loadMetas();
+function saveMetas(){ try{ localStorage.setItem('dm_metas', JSON.stringify(METAS)); }catch(e){} }
+/* código de cor de um CUSTO vs meta (menor=melhor): verde ≤ meta; amarelo até
+   meta×1,3 (atenção); vermelho acima (teto). Meta não definida => sem cor. */
+function metaColorClass(v, meta){
+  if(meta==null||v==null||!isFinite(v)||!isFinite(meta)||meta<=0) return '';
+  if(v<=meta) return 'mc-green';
+  if(v<=meta*1.3) return 'mc-yellow';
+  return 'mc-red';
+}
+
 function adLinkCell(name){ const u=AD_LINKS[name];
   return u?`<a class="rel-adlink" href="${escHtml(u)}" target="_blank" rel="noopener">Abrir ▸</a>`:'<span class="rel-adlink off">—</span>'; }
 
@@ -442,8 +472,9 @@ function adStructMap(fM,fL){
   fL.forEach(r=>{ if(!out[r.ad]) out[r.ad]={camp:r.camp,adset:r.adset}; });
   return out;
 }
-/* amostra relevante para JULGAR o anúncio (senão: "Em observação") */
-function adSampleOk(a){ return a.sp>=SAMPLE_MIN_SPEND && a.mqls>=SAMPLE_MIN_MQLS; }
+/* amostra relevante para JULGAR o anúncio (senão: "Em observação"). O limiar de
+   MQLs vem do painel de metas (volume mínimo amostral), editável ao vivo. */
+function adSampleOk(a){ return a.sp>=SAMPLE_MIN_SPEND && a.mqls>=METAS.volMin; }
 /* qualidade pelo resultado MAIS PROFUNDO disponível (venda>presença>check-in>MQL>lead):
    tier alto = etapa mais profunda; dentro do tier, mais volume e menor custo = melhor. */
 function adQuality(a){
@@ -481,7 +512,8 @@ function adRowCells(ad,a,struct){
     checkins:intf(s.checkins), txcheckin:pct(s.txcheckin), cpcin:brl(s.cpcin),
     presencas:intf(s.presencas), cpp:brl(s.cpp),
     vendas:intf(s.vendas), cac:brl(s.cac), fat:brl(s.fat), roas:numf(s.roas),
-    link:adLinkCell(ad)};
+    link:adLinkCell(ad),
+    _cpmql:d.cpmql, _cac:s.cac};   // valores crus p/ colorir vs meta
 }
 const statusChip=obs=>obs?'<span class="rel-chip c-yellow">Em observação</span>':'<span class="rel-chip c-green">Avaliável</span>';
 /* tabela estática de 22+1 colunas (scroll lateral contido em .tbl-wrap;
@@ -497,6 +529,8 @@ function relRenderAdTable(id,list){
       if(c.k==='status') return `<td class="${cls}">${statusChip(item.obs)}</td>`;
       if(c.k==='camp'||c.k==='adset') return `<td class="${cls}" title="${escHtml(v)}">${escHtml(v)}</td>`;
       if(c.k==='link')   return `<td class="${cls}">${v}</td>`;
+      if(c.k==='cpmql'){ const mc=metaColorClass(cells._cpmql,METAS.cpmql); return `<td class="${cls}${mc?' '+mc:''}">${v}</td>`; }
+      if(c.k==='cac'){   const mc=metaColorClass(cells._cac,METAS.cac);     return `<td class="${cls}${mc?' '+mc:''}">${v}</td>`; }
       return `<td class="${cls}">${v}</td>`;
     }).join('')+'</tr>';
   }).join(''):`<tr><td class="dim" colspan="${AD_COLS.length}" style="color:var(--muted)">Sem anúncios com gasto no período.</td></tr>`;
@@ -507,27 +541,18 @@ function relBriefKey(){ if(STATE.selDays.size) return null; return STATE.preset|
 function renderRelBrief(){
   const wrap=document.getElementById('relBrief'), stampEl=document.getElementById('relBriefStamp');
   const bf=DATA.briefings||{}, per=bf.periodos||{}, key=relBriefKey();
-  stampEl.textContent = bf.generated_at ? `Briefing gerado por IA · última atualização ${bf.generated_at} · atualiza 1×/dia` : '';
+  stampEl.textContent = bf.generated_at ? `Insights gerados por IA · última atualização ${bf.generated_at} · atualiza 1×/dia (23h59 BRT)` : '';
   if(!Object.keys(per).length){
-    wrap.innerHTML='<div class="rel-brief-empty">O briefing por IA ainda não foi gerado. Ele é atualizado automaticamente 1×/dia.</div>'; return; }
+    wrap.innerHTML='<div class="rel-brief-empty">Os insights por IA ainda não foram gerados. São atualizados automaticamente 1×/dia.</div>'; return; }
   if(!key || !per[key]){
-    wrap.innerHTML='<div class="rel-brief-empty">Briefing disponível para os períodos predefinidos (Hoje, Ontem, 3, 7, 14, 30 dias, Este mês, Mês passado, Todo período). Selecione um desses no seletor de período.</div>'; return; }
+    wrap.innerHTML='<div class="rel-brief-empty">Insights disponíveis para os períodos predefinidos (Hoje, Ontem, 3, 7, 14, 30 dias, Este mês, Mês passado, Todo período). Selecione um desses no seletor de período.</div>'; return; }
   const item=per[key];
   wrap.innerHTML = item.html || item.texto || '<div class="rel-brief-empty">Sem conteúdo.</div>';
 }
 
-function renderRelatorio(){
-  renderGeralCore(REL_IDS);   // espelho da Visão Geral (funil, KPIs, gráficos, tabela diária)
-
-  // cabeçalho do período
-  const pr=PRESETS.find(p=>p[0]===STATE.preset);
-  document.getElementById('relPeriodName').textContent = STATE.selDays.size?'Dias selecionados':(pr?pr[1]:'Personalizado');
-  let rangeTxt='';
-  if(STATE.from&&STATE.to){ const nD=Math.round((new Date(STATE.to+'T00:00:00')-new Date(STATE.from+'T00:00:00'))/86400000)+1;
-    rangeTxt=`${brdate(STATE.from)} a ${brdate(STATE.to)}`+(nD>0?` · ${nD} dia${nD>1?'s':''}`:''); }
-  document.getElementById('relPeriodRange').textContent=rangeTxt;
-
-  // Top / Piores anúncios — considera todos os leads + gasto (só anúncios com gasto)
+/* Top / Piores anúncios (separado p/ recolorir sem re-renderizar os gráficos
+   quando o usuário edita as metas). Considera todos os leads + gasto do período. */
+function renderRelAds(){
   const fL=leadsActive(), fM=metaActive();
   const struct=adStructMap(fM,fL);
   const agg=buildAgg(fL,fM,'ad');
@@ -549,7 +574,37 @@ function renderRelatorio(){
   relRenderAdTable('relWorst',worst);
   document.getElementById('relTopCount').textContent=top.length+' anúncios';
   document.getElementById('relWorstCount').textContent=worst.length+' anúncios';
+}
 
+/* nota de referência do painel de metas (mostra as metas ativas + legenda de cor) */
+function renderMetasNote(){
+  const el=document.getElementById('relMetasNote'); if(!el) return;
+  const cpmql=METAS.cpmql==null?'<b>não definida</b>':('<b>'+brl(METAS.cpmql)+'</b>');
+  const cac=METAS.cac==null?'<b>não definida</b>':('<b>'+brl(METAS.cac)+'</b>');
+  const semMeta=(METAS.cpmql==null||METAS.cac==null);
+  el.innerHTML=`Referência ativa — Meta CPMQL: ${cpmql} · Meta CAC: ${cac} · Amostra mínima: <b>${intf(METAS.volMin)} MQLs</b> · Corte após <b>${intf(METAS.nDias)} dias</b> acima do teto. `
+    +(semMeta?'Preencha as metas para colorir CPMQL/CAC nas tabelas de anúncio.':'')
+    +' Código de cor (CPMQL/CAC): <span class="mc-lg mc-green">verde ≤ meta</span> <span class="mc-lg mc-yellow">amarelo até +30%</span> <span class="mc-lg mc-red">vermelho acima</span>.';
+}
+function syncMetasInputs(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v==null?'':v); };
+  set('metaCpmql',METAS.cpmql); set('metaCac',METAS.cac); set('metaVolMin',METAS.volMin); set('metaNdias',METAS.nDias);
+  renderMetasNote();
+}
+
+function renderRelatorio(){
+  renderGeralCore(REL_IDS);   // espelho da Visão Geral (funil, KPIs, gráficos, tabela diária)
+
+  // cabeçalho do período
+  const pr=PRESETS.find(p=>p[0]===STATE.preset);
+  document.getElementById('relPeriodName').textContent = STATE.selDays.size?'Dias selecionados':(pr?pr[1]:'Personalizado');
+  let rangeTxt='';
+  if(STATE.from&&STATE.to){ const nD=Math.round((new Date(STATE.to+'T00:00:00')-new Date(STATE.from+'T00:00:00'))/86400000)+1;
+    rangeTxt=`${brdate(STATE.from)} a ${brdate(STATE.to)}`+(nD>0?` · ${nD} dia${nD>1?'s':''}`:''); }
+  document.getElementById('relPeriodRange').textContent=rangeTxt;
+
+  renderMetasNote();
+  renderRelAds();
   renderRelBrief();
 }
 
@@ -786,6 +841,25 @@ document.addEventListener('click',()=>{ if(ppIsOpen()) ppClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClose(); });
 document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
+
+/* painel de Metas & parâmetros — edita ao vivo, salva em localStorage e recolore
+   as tabelas de anúncio (sem re-renderizar os gráficos) */
+(function wireMetas(){
+  const num=el=>{ const s=(el&&el.value||'').trim(); if(s==='') return null; const n=parseFloat(s.replace(',','.')); return isFinite(n)?n:null; };
+  const onEdit=()=>{
+    METAS.cpmql=num(document.getElementById('metaCpmql'));
+    METAS.cac=num(document.getElementById('metaCac'));
+    const vm=num(document.getElementById('metaVolMin')); METAS.volMin=(vm!=null&&vm>=1)?Math.round(vm):METAS_DEFAULT.volMin;
+    const nd=num(document.getElementById('metaNdias')); METAS.nDias=(nd!=null&&nd>=1)?Math.round(nd):METAS_DEFAULT.nDias;
+    saveMetas(); renderMetasNote();
+    if(STATE.page==='rel') renderRelAds();   // só as tabelas, sem mexer nos gráficos
+  };
+  ['metaCpmql','metaCac','metaVolMin','metaNdias'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input',onEdit); });
+  const rb=document.getElementById('relMetasReset');
+  if(rb) rb.addEventListener('click',()=>{ METAS.cpmql=METAS_DEFAULT.cpmql; METAS.cac=METAS_DEFAULT.cac; METAS.volMin=METAS_DEFAULT.volMin; METAS.nDias=METAS_DEFAULT.nDias;
+    try{ localStorage.removeItem('dm_metas'); }catch(e){} syncMetasInputs(); if(STATE.page==='rel') renderRelAds(); });
+  syncMetasInputs();
+})();
 
 document.getElementById('updated').innerHTML='Última atualização:<br>'+B.generated_at_brt+' (BRT)';
 document.getElementById('buildFoot').textContent='build __BUILD_ID__';
