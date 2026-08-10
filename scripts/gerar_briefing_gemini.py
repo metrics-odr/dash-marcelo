@@ -1,12 +1,20 @@
 import os
 import json
+import re
 from google import genai
 from google.genai import types
 
 # 1. Autenticação na API
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("ERRO: A variável GEMINI_API_KEY não foi encontrada nos Secrets do GitHub!")
+
+client = genai.Client(api_key=api_key)
 
 # 2. Leitura dos arquivos
+if not os.path.exists("build/relatorios_metrics.json"):
+    raise FileNotFoundError("ERRO: O arquivo build/relatorios_metrics.json não foi encontrado.")
+
 with open("build/relatorios_metrics.json", "r", encoding="utf-8") as f:
     metrics_data = f.read()
 
@@ -14,6 +22,11 @@ guia_regras = ""
 if os.path.exists("build/GUIA-RELATORIOS.md"):
     with open("build/GUIA-RELATORIOS.md", "r", encoding="utf-8") as f:
         guia_regras = f.read()
+
+relatorios_atuais = ""
+if os.path.exists("build/relatorios.json"):
+    with open("build/relatorios.json", "r", encoding="utf-8") as f:
+        relatorios_atuais = f.read()
 
 # 3. Montagem do Prompt
 prompt = f"""
@@ -24,17 +37,20 @@ Siga estritamente este guia de regras de interpretação do funil e tags:
 Métricas atuais calculadas:
 {metrics_data}
 
+Estado atual do build/relatorios.json (para migrar o 'hoje' atual para 'ontem'):
+{relatorios_atuais}
+
 Sua tarefa:
-1. Migre o HTML da chave 'hoje' do JSON para 'ontem'.
-2. Escreva um novo 'hoje' analisando os dados atuais.
+1. Copie o HTML de periodos.hoje do JSON atual para periodos.ontem.
+2. Escreva um novo 'hoje' analisando os dados atuais de relatorios_metrics.json.
 3. Reescreva do zero os outros 7 períodos (3d, 7d, 14d, 30d, mes, mespass, todo).
 4. Use rigorosamente as tags CSS: <span class="tag escala|otimiza|corte|observar">.
-5. Retorne APENAS um objeto JSON válido mantendo a estrutura exata de build/relatorios.json.
+5. Retorne APENAS um objeto JSON válido mantendo a estrutura exata de build/relatorios.json, sem textos ou comentários fora do JSON.
 """
 
-# 4. Chamada da API
+# 4. Chamada da API do Gemini (usando modelo válido)
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     contents=prompt,
     config=types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -42,9 +58,16 @@ response = client.models.generate_content(
     )
 )
 
-# 5. Sobrescreve o arquivo relatorios.json
-novo_relatorio = json.loads(response.text)
+# 5. Tratamento para remoção de formatação Markdown caso retorne
+raw_text = response.text.strip()
+if raw_text.startswith("```"):
+    raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+    raw_text = re.sub(r"\s*```$", "", raw_text)
+
+# 6. Validação do JSON e salvamento
+novo_relatorio = json.loads(raw_text)
+
 with open("build/relatorios.json", "w", encoding="utf-8") as f:
     json.dump(novo_relatorio, f, ensure_ascii=False, indent=2)
 
-print("Briefings gerados e salvos com sucesso em build/relatorios.json!")
+print("✅ Briefings gerados e salvos com sucesso em build/relatorios.json!")
