@@ -68,7 +68,11 @@ acrescenta 3 blocos novos:
 - **Briefing do Gestor** — texto interpretativo por período, **pré-gerado por IA** e lido de
   `build/relatorios.json` (sem chamada de API no build/navegador). Chaves de período fixas
   (`hoje/ontem/3d/7d/14d/30d/mes/mespass/todo`), tags `Escalar/Otimizar/Cortar/Observar`.
-  Regras de escrita e interpretação do funil em `build/GUIA-RELATORIOS.md`.
+  Regras de escrita e interpretação do funil em `build/GUIA-RELATORIOS.md`. **Automação já
+  ativa** (2 etapas diárias — ver seção "Automação em 2 etapas" no topo do guia): 23:50 BRT
+  o workflow `gerar-relatorios-metrics.yml` busca as planilhas e commita
+  `build/relatorios_metrics.json`; 23:59 BRT a **Routine do Claude Code** (`trig_014edxZX63uCgtjvXvwJmrqF`)
+  redige os 9 briefings e dá push direto na `main`.
 
 Funil completo do evento: `Impressões → Cliques → Leads → MQLs → Check-ins → Presenças →
 Vendas → Faturamento`. Hoje só há Meta×Leads (vai até MQL); Check-ins/Presenças/Vendas/Fat
