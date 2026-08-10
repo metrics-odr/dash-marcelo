@@ -6,6 +6,29 @@
 > **interpreta e redige**. A aba Relatório espelha a Visão Geral e, abaixo,
 > mostra **Top Anúncios · Piores Anúncios · Briefing do Gestor**.
 
+## Automação em 2 etapas (já configurada)
+
+1. **23:50 BRT** — workflow `.github/workflows/gerar-relatorios-metrics.yml`
+   (GitHub Actions, `schedule` nativo + `workflow_dispatch`) roda
+   `build/gerar_relatorios.py`, busca os CSVs ao vivo do Google Sheets e
+   commita `build/relatorios_metrics.json` direto na `main` — **só números,
+   sem IA**. 100% independente de qualquer sessão de agente; roda sozinho
+   para sempre.
+2. **23:59 BRT** — **Routine do Claude Code** ("Briefing diário do Gestor
+   (dash-marcelo)", trigger `trig_014edxZX63uCgtjvXvwJmrqF`) dispara uma
+   sessão nova que faz `git pull`, lê `build/relatorios_metrics.json` +
+   este guia, migra o texto de `hoje` para `ontem`, redige os 9 briefings do
+   zero e dá `git push` **direto na `main`** (sem PR — a sessão da Routine
+   não tem acesso às tools de API do GitHub, só `git`/Bash puro). O deploy
+   normal (`deploy.yml`) then publica o texto no site em ~30 min.
+
+Rodar às 23:59 (não de manhã) garante que "hoje" seja analisado com o dia
+quase completo — por isso a migração hoje→ontem no passo 4 do guia abaixo.
+Para editar o agendamento/prompt da Routine, use `update_trigger`
+(`trigger_id` acima) a partir de qualquer sessão do Claude Code deste
+projeto; `list_triggers` lista o estado atual (habilitada, próximo horário
+etc.).
+
 ## Contexto do funil
 
 Funil de aquisição para um **evento presencial gratuito** destinado a empresários
