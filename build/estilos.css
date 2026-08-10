@@ -206,9 +206,25 @@
   .donut-center .dc-val{font-size:24px; font-weight:800; line-height:1}
   .donut-center .dc-lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:2px}
   .tag-q{color:var(--good); font-weight:700}
-  .pair-chart{border-top:1px solid var(--border); padding:8px 10px 10px; height:190px; display:flex; flex-direction:column}
-  .pair-chart .pc-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:0 4px 4px; flex:0 0 auto}
-  .pair-chart canvas{flex:1 1 auto; min-height:0}
+  .pair-chart{border-top:1px solid var(--border); padding:8px 10px 10px; display:flex; flex-direction:column; gap:6px}
+  .pair-chart .pc-title{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:0 4px; flex:0 0 auto}
+  .pc-canvas-wrap{position:relative; height:150px; flex:0 0 auto}
+  .pc-canvas-wrap canvas{width:100% !important; height:100% !important}
+  /* legenda customizada dos gráficos de Campanha/Conjunto/Anúncio: substitui a
+     legenda nativa do Chart.js (que quebrava/truncava nomes longos). Uma linha
+     por membro — quadrado da cor · nome COMPLETO (sem cortar) · CPMQL — clicável
+     (filtra a tabela/gráfico igual clicar na linha da tabela). Rola dentro de si
+     mesma (vertical se houver muitos membros; horizontal se um nome for maior
+     que a largura do painel) — nunca a página. */
+  .chart-legend{max-height:150px; overflow:auto; display:flex; flex-direction:column; gap:1px;
+    font-size:11.5px; border-top:1px solid var(--border); padding-top:6px}
+  .chart-legend .cl-row{display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px;
+    cursor:pointer; white-space:nowrap; width:max-content; min-width:100%}
+  .chart-legend .cl-row:hover{background:var(--accent-blue-light)}
+  .chart-legend .cl-row.sel{background:var(--selected); font-weight:700}
+  .chart-legend .cl-swatch{width:10px; height:10px; border-radius:2px; flex:0 0 auto}
+  .chart-legend .cl-name{color:var(--ink)}
+  .chart-legend .cl-val{margin-left:auto; padding-left:18px; color:var(--muted); font-variant-numeric:tabular-nums; flex:0 0 auto; font-size:10.5px}
 
   .note{font-size:11.5px; color:var(--muted); margin-top:10px}
   .foot{margin-top:26px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:12px}
@@ -254,21 +270,17 @@
   .mc-lg.mc-yellow{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 18%,transparent)}
   .mc-lg.mc-red{color:var(--bad); background:color-mix(in srgb,var(--bad) 15%,transparent)}
 
-  /* tabelas Top/Piores anúncios (22 colunas + Status): largura automática + scroll
-     lateral contido na .tbl-wrap (NÃO usa table-layout fixed). Anúncio, Status e
-     Link ficam FIXOS (position:sticky) nas bordas — sempre visíveis, sem precisar
-     rolar — só as métricas do meio rolam, como planilha com colunas congeladas. */
-  table.dt.rel-adt{table-layout:auto; min-width:max-content; width:auto}
-  table.dt.rel-adt th, table.dt.rel-adt td{overflow:visible; text-overflow:clip}
-  table.dt.rel-adt td.dim{max-width:230px; overflow:hidden; text-overflow:ellipsis}
+  /* tabela Top Anúncios: mesmo motor das tabelas hierárquicas (colunas de texto
+     com largura automática p/ caber o nome INTEIRO, redimensionável, ordenável).
+     Anúncio e Link ficam FIXOS (position:sticky) nas bordas — sempre visíveis,
+     sem precisar rolar — só as colunas do meio rolam lateralmente (dentro da
+     própria tabela, nunca a página). */
   table.dt.rel-adt tbody tr{cursor:default}
-  table.dt.rel-adt .stk-l1, table.dt.rel-adt .stk-l2, table.dt.rel-adt .stk-r{position:sticky; z-index:1}
-  table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-l2, table.dt.rel-adt thead .stk-r{z-index:3}
-  table.dt.rel-adt .stk-l1{left:0; width:190px; min-width:190px; max-width:190px}
-  table.dt.rel-adt .stk-l2{left:190px; width:120px; min-width:120px; max-width:120px; border-right:1px solid var(--border)}
-  table.dt.rel-adt .stk-r{right:0; width:88px; min-width:88px; max-width:88px; border-left:1px solid var(--border)}
-  table.dt.rel-adt tbody .stk-l1, table.dt.rel-adt tbody .stk-l2, table.dt.rel-adt tbody .stk-r{background:var(--surface)}
-  table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-l2, table.dt.rel-adt thead .stk-r{background:var(--thead)}
+  table.dt.rel-adt .stk-l1, table.dt.rel-adt .stk-r{position:sticky; z-index:1; background:var(--surface)}
+  table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-r{z-index:3; background:var(--thead)}
+  table.dt.rel-adt tfoot .stk-l1, table.dt.rel-adt tfoot .stk-r{position:sticky; z-index:1; background:var(--tfoot)}
+  table.dt.rel-adt .stk-l1{left:0; border-right:1px solid var(--border)}
+  table.dt.rel-adt .stk-r{right:0; border-left:1px solid var(--border)}
   .rel-adlink{font-size:12px; font-weight:600; color:var(--accent-blue); text-decoration:none; white-space:nowrap}
   .rel-adlink:hover{text-decoration:underline}
   .rel-adlink.off{color:var(--muted); font-weight:400}

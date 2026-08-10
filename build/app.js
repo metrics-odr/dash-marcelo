@@ -112,7 +112,7 @@ function textWidth(s, font){
   _measureCtx.font=font;
   return _measureCtx.measureText(s==null?'':String(s)).width;
 }
-const fmtStd=(t,v)=> t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):dimf(v);
+const fmtStd=(t,v)=> t==='brl'?brl(v):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):t==='html'?'':dimf(v);
 const FONT_DIM='500 12.5px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
 const FONT_NUM='12.5px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
 const FONT_HEAD='700 11px "Segoe UI",system-ui,-apple-system,Roboto,sans-serif';
@@ -134,6 +134,7 @@ function colWidth(cfg,c){ const saved=(STATE.colw[cfg.id]||{})[c.key];
   if(c.w) return c.w;
   if(c.type==='date') return 96;
   if(c.type==='dim') return autoDimWidth(cfg,c);   // por padrão, cabe o nome inteiro
+  if(c.type==='brl') return 110;   // "R$ 1.487,42" não cabia nos 92px padrão (cortava com "…")
   return 92; }
 function renderTable(cfg){
   const table=document.getElementById(cfg.id); if(!table) return;
@@ -151,7 +152,7 @@ function renderTable(cfg){
   cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
   // em tabelas densas (fit) o R$ é omitido nas células (o cabeçalho já indica) p/ caber sem cortar
   const brlc=v=>(v==null||!isFinite(v))?'-':nf2.format(v);
-  const fmt=(t,v)=> t==='brl'?(fit?brlc(v):brl(v)):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):dimf(v);
+  const fmt=(t,v)=> t==='brl'?(fit?brlc(v):brl(v)):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):t==='html'?(v==null?'-':String(v)):dimf(v);
   const widths=fit?[]:cfg.cols.map(c=>colWidth(cfg,c)); const totalW=widths.reduce((a,b)=>a+b,0);
   // modo fit: dimensão/data com largura fixa; colunas numéricas dividem o resto por igual
   const fitW=c=> c.w?c.w+'px' : c.type==='date'?'74px' : c.type==='dim'?(c.big?'210px':'116px') : '';
@@ -159,9 +160,10 @@ function renderTable(cfg){
     const w=fit?fitW(c):(widths[i]+'px'); return `<col${w?` style="width:${w}"`:''}>`;
   }).join('')+'</colgroup>';
   const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const stkCls=c=>c.stk?' stk-'+c.stk:'';
   let thead='<thead><tr>'+cfg.cols.map((c,i)=>{
     const sc = sortState&&sortState.key===c.key ? (sortState.dir==='asc'?'sorted-asc':'sorted-desc') : '';
-    return `<th class="${c.type==='dim'?'dim ':''}${sc}" data-k="${c.key}" data-ci="${i}" title="${esc(c.label)}">${c.label}${fit?'':'<span class="rsz"></span>'}</th>`;
+    return `<th class="${c.type==='dim'?'dim ':''}${sc}${stkCls(c)}" data-k="${c.key}" data-ci="${i}" title="${esc(c.label)}">${c.label}${fit?'':'<span class="rsz"></span>'}</th>`;
   }).join('')+'</tr></thead>';
   // title = valor SEMPRE completo (mesmo em fit, onde a célula pode abreviar/cortar) — passe o mouse p/ ver
   let tbody='<tbody>'+rows.map(r=>{
@@ -169,15 +171,16 @@ function renderTable(cfg){
     const tds=cfg.cols.map(c=>{
       const v=r.cells[c.key]; let bg='';
       if(c.heat && ext[c.key]) bg=`background:${heat(v,ext[c.key][0],ext[c.key][1],c.heat)}`;
-      const cls=(c.type==='dim'?'dim':'')+(c.cls&&c.cls(r)?' '+c.cls(r):'');
-      return `<td class="${cls}" style="${bg}" title="${esc(fmtStd(c.type,v))}">${fmt(c.type,v)}</td>`;
+      const cls=(c.type==='dim'?'dim':'')+(c.cls&&c.cls(r)?' '+c.cls(r):'')+stkCls(c);
+      const ttl=c.type==='html'?'':` title="${esc(fmtStd(c.type,v))}"`;
+      return `<td class="${cls}" style="${bg}"${ttl}>${fmt(c.type,v)}</td>`;
     }).join('');
     return `<tr class="${sel?'sel':''}" data-k="${encodeURIComponent(r.k)}">${tds}</tr>`;
   }).join('')+'</tbody>';
   let tfoot='';
   if(cfg.total){ tfoot='<tfoot><tr>'+cfg.cols.map((c,i)=>{
     const v=cfg.total[c.key]; const isFirst=i===0&&v==null;
-    return `<td class="${c.type==='dim'?'dim':''}" title="${isFirst?'Total Geral':esc(fmtStd(c.type,v))}">${isFirst?'Total Geral':fmt(c.type,v)}</td>`;
+    return `<td class="${c.type==='dim'?'dim':''}${stkCls(c)}" title="${isFirst?'Total Geral':esc(fmtStd(c.type,v))}">${isFirst?'Total Geral':fmt(c.type,v)}</td>`;
   }).join('')+'</tr></tfoot>'; }
   table.style.width=fit?'100%':totalW+'px';
   table.innerHTML=colgroup+thead+tbody+tfoot;
@@ -218,6 +221,9 @@ function renderTable(cfg){
       tr.addEventListener('click',e=>{ cfg.onSelect(decodeURIComponent(tr.dataset.k), e); });
     });
   }
+  // hook pós-renderização (roda de novo em CADA re-render, inclusive ao ordenar,
+  // pra chips/cores customizados nunca sumirem ao clicar num cabeçalho)
+  if(cfg.afterRender) cfg.afterRender(table, rows);
 }
 /* Heatmap por coluna: cor FIXA por métrica (definida em identidade-visual.css),
    só a OPACIDADE varia com o valor (maior valor = mais vibrante). */
@@ -306,59 +312,46 @@ function donutQlf(id, mqls, leads){
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.label+': '+intf(c.raw)+(leads?' ('+pct(c.raw/leads)+')':'')}}}}});
   const el2=document.getElementById('mQlfPct'); if(el2) el2.textContent=pct(leads?mqls/leads:null);
 }
-/* Mar03: MQLs por dimensão (campanha/conjunto/anúncio) por dia — 1 linha por membro.
-   Legenda exibida com nomes completos, tooltip mostra valor + MQLs do dia.
-   Clique na legenda filtra a tabela e gráficos; clique na tabela filtra gráfico. */
-/* quebra um rótulo longo em várias linhas (p/ o tooltip NUNCA truncar o nome) */
+/* Mar03/Mar10: MQLs por dimensão (campanha/conjunto/anúncio) por dia — 1 linha por membro.
+   Legenda é um painel HTML próprio (fora do canvas) — a legenda NATIVA do Chart.js
+   quebra/trunca nomes longos porque respeita a largura do canvas; a nossa não.
+   Formato de cada linha: [quadrado da cor] Nome completo da campanha ... CPMQL.
+   Clique numa linha da legenda OU numa linha do gráfico filtra a tabela (selDim);
+   quando a tabela já tem seleção (STATE.mSel*), o gráfico plota SÓ as linhas
+   selecionadas (a legenda continua listando todas p/ dar pra trocar a seleção). */
+/* quebra um rótulo longo em várias linhas (p/ o tooltip do Chart.js NUNCA truncar o nome) */
 function wrapLabel(s,n){ s=String(s==null?'':s); const words=s.split(' '); const lines=[]; let cur='';
   words.forEach(w=>{ if(cur && (cur+' '+w).length>n){ lines.push(cur); cur=w; } else cur=cur?cur+' '+w:w; });
   if(cur) lines.push(cur); return lines.length?lines:['—']; }
-function mqlByDimChart(id, fL, dim){
-  destroy(id); const el=document.getElementById(id); if(!el) return;
+function mqlByDimChart(id, fL, agg, dim, selSet){
+  destroy(id); const el=document.getElementById(id); const legEl=document.getElementById(id+'Legend');
+  if(!el) return;
   const days=[...new Set(fL.filter(r=>r.d).map(r=>r.d))].sort();
-  const members=[...new Set(fL.map(r=>r[dim]))];
+  // ordena por CPMQL (melhor primeiro; sem MQL/gasto fica no fim) — ordem estável p/ cor e legenda
+  const members=[...new Set(fL.map(r=>r[dim]))].sort((a,b)=>{
+    const ca=agg[a]?derive(agg[a]).cpmql:null, cb=agg[b]?derive(agg[b]).cpmql:null;
+    if(ca==null&&cb==null) return 0; if(ca==null) return 1; if(cb==null) return -1; return ca-cb;
+  });
   const pal=chartPalette(), mut=cmuted();
-  const dsets=members.map((mv,i)=>{
+  const dimChar={'camp':'C','adset':'A','ad':'D'}[dim]||'C';
+  // com seleção ativa nesta MESMA dimensão, o GRÁFICO plota só as linhas selecionadas
+  // (a legenda abaixo continua mostrando todos os membros, pra dar pra trocar a seleção)
+  const plotMembers = (selSet&&selSet.size) ? members.filter(m=>selSet.has(m)) : members;
+  const dsets=plotMembers.map(mv=>{
+    const idx=members.indexOf(mv);
     const byDay={}; days.forEach(d=>byDay[d]=0);
     fL.forEach(r=>{ if(r[dim]===mv && r.d!=null && byDay[r.d]!=null) byDay[r.d]+=r.q; });
-    const col=pal[i%pal.length];
+    const col=pal[idx%pal.length];
     return {label:String(mv), data:days.map(d=>byDay[d]), borderColor:col, backgroundColor:col, borderWidth:2, pointRadius:2, tension:.25, spanGaps:true};
   });
-  const dimChar={'camp':'C','adset':'A','ad':'D'}[dim]||'C';
   charts[id]=new Chart(el,{type:'line',
     data:{labels:days.map(d=>d.slice(5)), datasets:dsets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
-      onClick:(e,act)=>{
-        // clique na legenda filtra a tabela correspondente
-        if(act.length){
-          const idx=act[0].datasetIndex;
-          if(idx!=null&&dsets[idx]){
-            const mv=dsets[idx].label;
-            selDim(dimChar,mv,false);
-          }
-        }
-      },
+      // clique em qualquer ponto/linha do gráfico filtra igual clicar na linha da tabela
+      onClick:(e,act)=>{ if(act.length){ const idx=act[0].datasetIndex;
+        if(idx!=null&&dsets[idx]) selDim(dimChar,dsets[idx].label,false); } },
       plugins:{
-        legend:{
-          display:true,
-          labels:{
-            color:mut,font:{size:10},
-            padding:8,
-            // gera legenda com cores e nomes completos
-            generateLabels:c=>c.data.datasets.map((ds,i)=>({
-              text:ds.label,
-              fillStyle:ds.borderColor,strokeStyle:ds.borderColor,lineWidth:2,hidden:false,index:i,pointStyle:'line'
-            }))
-          },
-          // clique na legenda também filtra (fallback)
-          onClick:(e,it,leg)=>{
-            const idx=it.index;
-            if(idx!=null&&dsets[idx]){
-              const mv=dsets[idx].label;
-              selDim(dimChar,mv,false);
-            }
-          }
-        },
+        legend:{display:false},   // legenda nativa desligada — usamos o painel HTML abaixo
         // tooltip mostra o NOME COMPLETO (quebrado em linhas, sem truncar) + MQLs do dia
         tooltip:{displayColors:true,
           callbacks:{title:it=>it.length?wrapLabel(it[0].dataset.label,44):'', label:c=>c.label+': '+intf(c.raw)+' MQLs'}}
@@ -367,6 +360,21 @@ function mqlByDimChart(id, fL, dim){
         y:{ticks:{color:mut,font:{size:9},precision:0},grid:{color:cgrid()},beginAtZero:true}}
     }
   });
+  // painel de legenda HTML: quadrado da cor | nome completo (1 linha, nunca corta) | CPMQL
+  if(legEl){
+    legEl.innerHTML = members.map((mv,idx)=>{
+      const col=pal[idx%pal.length];
+      const cpmql = agg[mv]!=null ? derive(agg[mv]).cpmql : null;
+      const sel = !!(selSet && selSet.has(mv));
+      return `<div class="cl-row${sel?' sel':''}" data-mv="${escHtml(mv)}" title="${escHtml(mv)}">`
+        +`<span class="cl-swatch" style="background:${col}"></span>`
+        +`<span class="cl-name">${escHtml(mv)}</span>`
+        +`<span class="cl-val">${brl(cpmql)}</span></div>`;
+    }).join('');
+    legEl.querySelectorAll('.cl-row').forEach(row=>{
+      row.addEventListener('click',()=>selDim(dimChar,row.dataset.mv,false));
+    });
+  }
 }
 
 /* ---------------- KPI cards ---------------- */
@@ -451,7 +459,6 @@ function renderGeralCore(ids){
 const AD_LINKS = DATA.ad_links || {};
 const SAMPLE_MIN_SPEND = (B.sample_min_spend!=null?B.sample_min_spend:100);
 const SAMPLE_MIN_MQLS  = (B.sample_min_mqls!=null?B.sample_min_mqls:3);
-const TOP_ADS_N        = (B.top_ads_n!=null?B.top_ads_n:10);
 const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 /* ---- Metas & parâmetros (painel editável) — ajusta cores/amostra AO VIVO ----
@@ -554,7 +561,7 @@ const statusChip=obs=>obs?'<span class="rel-chip c-yellow">Em observação</span
 function relRenderAdTable(id,list){
   const el=document.getElementById(id); if(!el) return;
   const cols=[
-    {key:'ad',label:'Anúncio',type:'dim',big:true},{key:'status',label:'Status',type:'dim'},
+    {key:'ad',label:'Anúncio',type:'dim',big:true,stk:'l1'},{key:'status',label:'Status',type:'dim',w:140},
     {key:'camp',label:'Campanha',type:'dim',big:true},{key:'adset',label:'Conjunto',type:'dim',big:true},
     {key:'gasto',label:'Gasto',type:'brl'},{key:'im',label:'Impr.',type:'int'},
     {key:'cpm',label:'CPM',type:'brl'},{key:'ctr',label:'CTR',type:'pct'},
@@ -570,26 +577,30 @@ function relRenderAdTable(id,list){
     {key:'cac',label:'CAC',type:'brl'},
     {key:'fat',label:'Faturamento',type:'brl'},
     {key:'roas',label:'ROAS',type:'num'},
-    {key:'link',label:'Link',type:'dim'},
+    {key:'link',label:'Link',type:'html',w:90,stk:'r'},
   ];
   const rows=list.map(item=>{
     const cells=adRowCells(item.ad,item.a,item.struct);
-    cells.status='';  // placeholder; será substituído depois
+    cells.status='';  // placeholder textual; o chip real entra via afterRender
     return {k:item.ad, cells, _obs:item.obs, _cpmql:cells._cpmql, _cac:cells._cac};
   });
-  renderTable({id, cols, rows, center:false});
-  // pós-renderização: adicionar chips de status e colorir CPMQL/CAC
-  el.querySelectorAll('tbody tr').forEach((tr,idx)=>{
-    const item=rows[idx];
-    if(!item) return;
-    const tds=tr.querySelectorAll('td');
-    cols.forEach((c,ci)=>{
-      if(ci>=tds.length) return;
-      const td=tds[ci];
-      if(c.key==='status') td.innerHTML=statusChip(item._obs);
-      if(c.key==='cpmql'){ const mc=metaColorClass(item._cpmql,METAS.cpmql); if(mc) td.classList.add(mc); }
-      if(c.key==='cac'){ const mc=metaColorClass(item._cac,METAS.cac); if(mc) td.classList.add(mc); }
-    });
+  renderTable({
+    id, cols, rows, center:true,   // Mar10: só as MÉTRICAS centralizam; dim fica à esquerda (CSS .dt-center)
+    // roda em TODA renderização (inclusive ao ordenar por um cabeçalho) — chip de
+    // status e cores de meta (CPMQL/CAC) nunca mais somem ao clicar pra ordenar
+    afterRender:(table,sortedRows)=>{
+      table.querySelectorAll('tbody tr').forEach((tr,idx)=>{
+        const item=sortedRows[idx]; if(!item) return;
+        const tds=tr.querySelectorAll('td');
+        cols.forEach((c,ci)=>{
+          if(ci>=tds.length) return;
+          const td=tds[ci];
+          if(c.key==='status') td.innerHTML=statusChip(item._obs);
+          if(c.key==='cpmql'){ const mc=metaColorClass(item._cpmql,METAS.cpmql); if(mc) td.classList.add(mc); }
+          if(c.key==='cac'){ const mc=metaColorClass(item._cac,METAS.cac); if(mc) td.classList.add(mc); }
+        });
+      });
+    }
   });
 }
 
@@ -606,28 +617,28 @@ function renderRelBrief(){
   wrap.innerHTML = item.html || item.texto || '<div class="rel-brief-empty">Sem conteúdo.</div>';
 }
 
-/* Top / Piores anúncios (separado p/ recolorir sem re-renderizar os gráficos
-   quando o usuário edita as metas). Considera todos os leads + gasto do período. */
+/* Top Anúncios (separado p/ recolorir sem re-renderizar os gráficos quando o
+   usuário edita as metas). Considera todos os leads + gasto do período.
+   Mar10: NÃO força um número fixo de linhas preenchendo com anúncios sem
+   resultado — mostra TODOS os anúncios com gasto (ordenados: campeões com
+   amostra relevante primeiro, depois pela qualidade). Só os que têm amostra
+   relevante (adSampleOk) recebem o status "Avaliável" (campeão); o resto fica
+   "Em observação" — o pill do título mostra quantos são campeões DE quantos
+   anúncios no total, pra não sugerir que 10 linhas = 10 vencedores. */
 function renderRelAds(){
   const fL=leadsActive(), fM=metaActive();
   const struct=adStructMap(fM,fL);
   const agg=buildAgg(fL,fM,'ad');
   const pool=Object.entries(agg).filter(([ad,a])=>a.sp>0).map(([ad,a])=>({ad, a, struct:struct[ad]||{camp:'—',adset:'—'}}));
 
-  // Top: amostra relevante primeiro, depois pela qualidade profunda; promissores sem amostra entram marcados
-  const top=pool.slice().sort((x,y)=>{ const sx=adSampleOk(x.a), sy=adSampleOk(y.a);
+  const all=pool.slice().sort((x,y)=>{ const sx=adSampleOk(x.a), sy=adSampleOk(y.a);
     if(sx!==sy) return sx?-1:1; return cmpBest(x.a,y.a); })
-    .slice(0,TOP_ADS_N).map(it=>({...it, obs:!adSampleOk(it.a)}));
-  const topSet=new Set(top.map(it=>it.ad));
+    .map(it=>({...it, obs:!adSampleOk(it.a)}));
+  const champs=all.filter(it=>!it.obs).length;
 
-  // Piores: só com investimento relevante e fora do Top; pior qualidade primeiro;
-  // sem amostra de MQL => "Em observação" (nunca "ruim")
-  const worst=pool.filter(it=>it.a.sp>=SAMPLE_MIN_SPEND && !topSet.has(it.ad))
-    .sort((x,y)=>cmpBest(y.a,x.a))
-    .slice(0,TOP_ADS_N).map(it=>({...it, obs:!adSampleOk(it.a)}));
-
-  relRenderAdTable('relTop',top);
-  document.getElementById('relTopCount').textContent=top.length+' anúncios';
+  relRenderAdTable('relTop',all);
+  document.getElementById('relTopCount').textContent =
+    champs+' campeão'+(champs===1?'':'es')+' de '+all.length+' anúncio'+(all.length===1?'':'s')+' com gasto';
 }
 
 /* nota de referência do painel de metas (mostra as metas ativas + legenda de cor) */
@@ -755,20 +766,23 @@ function renderMeta(){
   function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
     convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas};}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
+  const aggC=buildAgg(Sc.fL,Sc.fM,'camp'), aggA=buildAgg(Sa.fL,Sa.fM,'adset'), aggD=buildAgg(Sd.fL,Sd.fM,'ad');
   // Tabelas hierárquicas: NÃO usam "fit" — a dimensão (campanha/conjunto/anúncio)
   // tem largura automática p/ caber o nome INTEIRO por padrão, nunca quebra linha,
   // é redimensionável (arrastar borda) e 2 cliques na borda auto-ajusta (Sheets/Looker).
-  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(buildAgg(Sc.fL,Sc.fM,'camp')), total:totRowOf(totals(Sc.fL,Sc.fM)),
+  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(aggC), total:totRowOf(totals(Sc.fL,Sc.fM)),
     selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(buildAgg(Sa.fL,Sa.fM,'adset')), total:totRowOf(totals(Sa.fL,Sa.fM)),
+  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(aggA), total:totRowOf(totals(Sa.fL,Sa.fM)),
     selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(buildAgg(Sd.fL,Sd.fM,'ad')), total:totRowOf(totals(Sd.fL,Sd.fM)),
+  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(aggD), total:totRowOf(totals(Sd.fL,Sd.fM)),
     selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
 
-  // Mar03: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha por membro
-  mqlByDimChart('chCamp', Sc.fL, 'camp');
-  mqlByDimChart('chAdset', Sa.fL, 'adset');
-  mqlByDimChart('chAd', Sd.fL, 'ad');
+  // Mar03/Mar10: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha
+  // por membro, com legenda própria (cor · nome completo · CPMQL) e filtro bidirecional
+  // com a tabela (STATE.mSel* determina quais linhas o gráfico plota).
+  mqlByDimChart('chCamp', Sc.fL, aggC, 'camp', STATE.mSelC);
+  mqlByDimChart('chAdset', Sa.fL, aggA, 'adset', STATE.mSelA);
+  mqlByDimChart('chAd', Sd.fL, aggD, 'ad', STATE.mSelAd);
 
   // qualified leads
   const q=fL.filter(l=>l.q).sort((a,b)=>(a.d<b.d?1:-1));
