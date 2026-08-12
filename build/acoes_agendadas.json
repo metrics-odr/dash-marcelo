@@ -8,6 +8,15 @@
       "campanha": "BTBExp | E2-CAP | P2-FRIO | LEAD | ABO | 2026-07-25 | Teste de Ads",
       "conjunto": "AUTO | Advantage | AD17",
       "criado_em": "2026-08-12T21:17:58.835Z"
+    },
+    {
+      "id": "msqln301z2encv",
+      "texto": "Se não gerar MQL até amanha, cortar",
+      "nivel": "anuncio",
+      "nome": "AD017_VIDEO_BTBExp-CAP",
+      "campanha": "BTBExp | E2-CAP | P2-FRIO | LEAD | ABO | 2026-07-25 | Teste de Ads",
+      "conjunto": "AUTO | Advantage | AD17",
+      "criado_em": "2026-08-12T18:26:25-03:00"
     }
   ],
   "agendadas": []
