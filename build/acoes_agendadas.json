@@ -1,4 +1,14 @@
 {
-  "pendentes": [],
+  "pendentes": [
+    {
+      "id": "msqlc8fnrmnpld",
+      "texto": "Corar anúncio se não gerar MQL até amanhã",
+      "nivel": "conjunto",
+      "nome": "AUTO | Advantage | AD17",
+      "campanha": "BTBExp | E2-CAP | P2-FRIO | LEAD | ABO | 2026-07-25 | Teste de Ads",
+      "conjunto": "AUTO | Advantage | AD17",
+      "criado_em": "2026-08-12T21:17:58.835Z"
+    }
+  ],
   "agendadas": []
 }
