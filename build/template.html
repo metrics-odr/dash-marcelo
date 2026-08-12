@@ -207,6 +207,13 @@
         </div>
 
 
+        <!-- ---- Ações Agendadas: lembretes por campanha/conjunto/anúncio (⏱ nas tabelas) ---- -->
+        <h2 class="sec-title">Ações Agendadas</h2>
+        <div class="card" style="padding:0">
+          <div class="tbl-wrap" id="relSchedWrap"></div>
+          <p class="note" id="relSchedNote"></p>
+        </div>
+
         <h2 class="sec-title">Insights de Tráfego</h2>
         <div class="rel-brief" id="relBrief"></div>
         <p class="note" id="relBriefStamp"></p>
@@ -215,6 +222,12 @@
       <div class="foot">Atualizado automaticamente a cada ~30 min via GitHub Actions + cron‑job.org. Somente leitura das planilhas. <span id="buildFoot2"></span></div>
     </div>
   </div>
+</div>
+
+<!-- ---- modal genérico (backdrop + card) — Ações Agendadas: novo lembrete / ver estrutura ---- -->
+<div id="modalRoot" class="modal-root" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-card" id="modalCard"></div>
 </div>
 
 <script id="payload" type="application/json">__DATA_JSON__</script>
