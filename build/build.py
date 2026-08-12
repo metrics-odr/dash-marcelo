@@ -57,6 +57,18 @@ META_CAC = None            # meta de CAC (R$/venda); None = não definida
 VOLUME_MIN_AMOSTRAL = SAMPLE_MIN_MQLS  # conversões (MQLs) mínimas p/ amostra confiável
 N_DIAS_CORTE = 5           # dias consecutivos acima do teto p/ considerar corte
 
+# --------------------------------------------------------------------------- #
+# Ações Agendadas (lembretes por campanha/conjunto/anúncio)
+# --------------------------------------------------------------------------- #
+# O botão "Feito"/"+ lembrete" no dashboard grava direto em
+# build/acoes_agendadas.json via GitHub Contents API (sem backend próprio).
+# Precisa de um token com permissão de escrita (fine-grained, só "Contents:
+# Read and write" neste repositório) cadastrado como secret do GitHub Actions
+# (SCHEDULED_ACTIONS_PAT) e injetado aqui via variável de ambiente SCHED_PAT.
+GH_OWNER = "metrics-odr"
+GH_REPO = "dash-marcelo"
+GH_BRANCH = "main"
+
 
 # --------------------------------------------------------------------------- #
 # Leitura
@@ -310,6 +322,12 @@ def process(leads_rows, meta_rows):
             "meta_cac": META_CAC,
             "volume_min_amostral": VOLUME_MIN_AMOSTRAL,
             "n_dias_corte": N_DIAS_CORTE,
+            # Ações Agendadas: credencial de escrita (client-side) + coordenadas
+            # do repo, para o dashboard commitar lembretes via GitHub Contents API.
+            "gh_owner": GH_OWNER,
+            "gh_repo": GH_REPO,
+            "gh_branch": GH_BRANCH,
+            "gh_pat": os.environ.get("SCHED_PAT", ""),
         },
         "leads": leads,
         "meta": meta,
@@ -318,26 +336,37 @@ def process(leads_rows, meta_rows):
         # Briefings do Gestor (texto por IA, gerado 1x/dia). Preenchido em main()
         # via load_briefings(); fica {} se relatorios.json não existir.
         "briefings": {},
+        # Ações Agendadas (lembretes por estrutura). Preenchido em main() via
+        # load_json_file(); fica {"pendentes":[],"agendadas":[]} se o arquivo
+        # não existir.
+        "acoes_agendadas": {"pendentes": [], "agendadas": []},
     }
 
 
 # --------------------------------------------------------------------------- #
 # Briefings do Gestor (aba Relatório)
 # --------------------------------------------------------------------------- #
+def load_json_file(path: str, default: dict) -> dict:
+    """Lê um JSON versionado no repo (ex.: relatorios.json, acoes_agendadas.json).
+    Retorna `default` se o arquivo não existir/for inválido. Nunca chama API —
+    só lê o que já foi commitado (pela rotina diária de IA ou pelo dashboard)."""
+    if not path or not os.path.exists(path):
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            obj = json.load(f)
+        return obj if isinstance(obj, dict) else default
+    except (ValueError, OSError):
+        return default
+
+
 def load_briefings(path: str) -> dict:
     """Lê build/relatorios.json (gerado pela rotina diária de IA). Estrutura:
         {"generated_at": "...", "periodos": {"<preset>": {"html": "..."}, ...}}
     Retorna o dict inteiro (ou {} se o arquivo não existir/for inválido).
     A geração NÃO acontece aqui — este build só lê o texto já pronto, sem
     chamar nenhuma API (custo zero no build/no navegador)."""
-    if not path or not os.path.exists(path):
-        return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            obj = json.load(f)
-        return obj if isinstance(obj, dict) else {}
-    except (ValueError, OSError):
-        return {}
+    return load_json_file(path, {})
 
 
 # --------------------------------------------------------------------------- #
@@ -381,8 +410,14 @@ def main():
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia) — lidos do arquivo
     # versionado ao lado do template. Sem chamada de API no build.
-    briefings_path = os.path.join(os.path.dirname(os.path.abspath(args.template)), "relatorios.json")
+    template_dir = os.path.dirname(os.path.abspath(args.template))
+    briefings_path = os.path.join(template_dir, "relatorios.json")
     data["briefings"] = load_briefings(briefings_path)
+
+    # Ações Agendadas (lembretes por estrutura, escritos pelo dashboard e
+    # processados pela rotina diária de IA) — mesmo padrão do briefings acima.
+    acoes_path = os.path.join(template_dir, "acoes_agendadas.json")
+    data["acoes_agendadas"] = load_json_file(acoes_path, {"pendentes": [], "agendadas": []})
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:

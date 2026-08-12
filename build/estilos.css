@@ -247,6 +247,17 @@
   .rel-chip.c-green{color:var(--good); background:color-mix(in srgb,var(--good) 12%,transparent)}
   .rel-chip.c-yellow{color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%,transparent)}
   .rel-chip.c-red{color:var(--bad); background:color-mix(in srgb,var(--bad) 12%,transparent)}
+  .rel-chip.c-blue{color:var(--accent-blue); background:color-mix(in srgb,var(--accent-blue) 12%,transparent)}
+
+  /* Ações Agendadas: ícone de relógio (⏱) nas tabelas — cinza = sem lembrete,
+     colorido = tem ação aberta, vermelho = atrasada. Coluna a mais fina possível. */
+  .sched-icon{width:26px; height:26px; padding:0; border:none; background:transparent; border-radius:7px;
+    font-size:13px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center}
+  .sched-icon.off{color:var(--muted); opacity:.55}
+  .sched-icon.off:hover{opacity:1; background:var(--accent-blue-light)}
+  .sched-icon.on{color:var(--accent-blue); background:color-mix(in srgb,var(--accent-blue) 14%,transparent)}
+  .sched-icon.on.overdue{color:var(--bad); background:color-mix(in srgb,var(--bad) 16%,transparent)}
+  .sched-icon.on:hover{filter:brightness(1.08)}
 
   /* painel de Metas & parâmetros (editável) */
   .rel-metas{margin-bottom:14px}
@@ -279,10 +290,37 @@
   table.dt.rel-adt thead .stk-l1, table.dt.rel-adt thead .stk-r{z-index:3; background:var(--thead)}
   table.dt.rel-adt tfoot .stk-l1, table.dt.rel-adt tfoot .stk-r{position:sticky; z-index:1; background:var(--tfoot)}
   table.dt.rel-adt .stk-l1{left:0; border-right:1px solid var(--border)}
+  table.dt.rel-adt .stk-l2{left:34px}
   table.dt.rel-adt .stk-r{right:0; border-left:1px solid var(--border)}
   .rel-adlink{font-size:12px; font-weight:600; color:var(--accent-blue); text-decoration:none; white-space:nowrap}
   .rel-adlink:hover{text-decoration:underline}
   .rel-adlink.off{color:var(--muted); font-weight:400}
+
+  /* Ações Agendadas: tabela + botões da aba Relatório */
+  table.dt#relSched td, table.dt#relSched th{white-space:normal}
+  table.dt#relSched td:first-child{max-width:340px}
+  .struct-link{background:none; border:none; padding:0; color:var(--accent-blue); font-weight:600; font-size:inherit; cursor:pointer; text-align:left}
+  .struct-link:hover{text-decoration:underline}
+  .sched-done{margin-left:8px; padding:3px 10px; font-size:11.5px}
+
+  /* ---- modal genérico (backdrop + card) — novo lembrete / ver estrutura ---- */
+  .modal-root{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center}
+  .modal-root[hidden]{display:none}
+  .modal-backdrop{position:absolute; inset:0; background:rgba(10,12,17,.5)}
+  .modal-card{position:relative; z-index:1; width:420px; max-width:92vw; max-height:86vh; overflow:auto;
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,.25); padding:18px 20px}
+  .modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
+  .modal-head h3{margin:0; font-size:15px}
+  .modal-x{background:none; border:none; font-size:16px; color:var(--muted); cursor:pointer; padding:2px 6px}
+  .modal-x:hover{color:var(--ink)}
+  .struct-box{background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px}
+  .struct-row{display:flex; gap:8px; font-size:12.5px}
+  .struct-lbl{color:var(--muted); min-width:70px; font-weight:600}
+  .struct-val{color:var(--ink)}
+  .modal-textarea{width:100%; padding:10px; border:1px solid var(--border); border-radius:9px; background:var(--bg); color:var(--ink); font-size:13.5px; font-family:inherit; resize:vertical}
+  .modal-textarea:focus{outline:none; border-color:var(--accent-blue); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-blue) 22%,transparent)}
+  .modal-foot{display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-top:12px}
+  .modal-err{color:var(--bad); font-size:12px; margin-right:auto}
 
   /* briefing do gestor */
   .rel-brief{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; line-height:1.6; font-size:13.5px}

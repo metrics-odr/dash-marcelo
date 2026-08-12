@@ -4,7 +4,10 @@
 > Anthropic no build nem no navegador** — a página só exibe o texto já pronto.
 > Os números vêm dos mesmos dados do site (Meta Ads × Leads); a IA apenas
 > **interpreta e redige**. A aba Relatório espelha a Visão Geral e, abaixo,
-> mostra **Top Anúncios · Piores Anúncios · Briefing do Gestor**.
+> mostra **Top Anúncios · Piores Anúncios · Ações Agendadas · Briefing do
+> Gestor**. A mesma Routine também processa `build/acoes_agendadas.json`
+> (lembretes escritos no site) — ver seção "Ações Agendadas" no fim deste
+> guia.
 
 ## Automação em 2 etapas (já configurada)
 
@@ -341,3 +344,60 @@ CPP, CAC, volume de presenças, faturamento e ROAS — **nunca só por CPL/Tx MQ
   primeira execução no novo formato — não é um formato válido para novas
   gerações. Se o arquivo não existir, a aba mostra tudo menos o
   briefing (cards/tabelas seguem funcionando).
+
+## Ações Agendadas (`build/acoes_agendadas.json`) — processar TODA execução
+
+Lembretes que o Marcelo escreve direto no dashboard (ícone ⏱ nas tabelas
+Campanha/Conjunto/Anúncio e Top Anúncios), ex.: *"Se não gerar MQL até
+amanhã, cortar"* ou *"Conferir CAC em 5 dias, se continuar baixo, aumenta
+pra R$ 100/dia"*. O clique grava direto em `build/acoes_agendadas.json`
+(commit via GitHub Contents API, PAT embutido no site — não depende desta
+Routine). **Esta Routine é quem interpreta o texto livre e calcula a
+data-alvo** — sem isso o lembrete nunca sai de "pendente".
+
+Schema:
+```json
+{
+  "pendentes": [
+    {"id":"a1b2c3", "texto":"Conferir CAC em 5 dias, se continuar baixo, aumenta pra R$ 100/dia",
+     "nivel":"anuncio", "nome":"AD015_VIDEO_BTBExp-CAP",
+     "campanha":"BTBExp | E2-CAP | P2-FRIO | LEAD | ABO | 2026-07-25 | Teste de Ads",
+     "conjunto":"AUTO | Advantage | AD15", "criado_em":"2026-08-12T14:32:00-03:00"}
+  ],
+  "agendadas": [
+    {"id":"a1b2c3", "texto":"...", "nivel":"anuncio", "nome":"AD015_VIDEO_BTBExp-CAP",
+     "campanha":"...", "conjunto":"...", "criado_em":"...",
+     "data_alvo":"2026-08-17", "acao_resumo":"Conferir CAC, escalar se baixo",
+     "status":"agendado", "concluido_em":null}
+  ]
+}
+```
+`nivel` é `"campanha"`, `"conjunto"` ou `"anuncio"` — a estrutura exata onde o
+ícone foi clicado (o site já resolve `campanha`/`conjunto` automaticamente
+pela combinação de maior gasto, então normalmente já vêm preenchidos).
+
+**A cada execução desta Routine, além de reescrever os 9 Insights:**
+1. Leia `build/acoes_agendadas.json`. Se não existir ou estiver vazio, pule
+   este passo (não é erro).
+2. Para cada item em `pendentes`: interprete o texto livre usando
+   `criado_em` como data-âncora — "amanhã" = `criado_em + 1 dia`, "em N
+   dias"/"daqui a N dias" = `criado_em + N dias`, "hoje" = `criado_em`, uma
+   data explícita (DD/MM ou DD/MM/AAAA) usa a data literal. Sem prazo
+   explícito no texto, use `criado_em + 3 dias` como padrão razoável e diga
+   isso em `acao_resumo`. Gere `acao_resumo` (máx. ~6 palavras, ex.:
+   "Conferir CAC, escalar se baixo" ou "Cortar se sem MQL"). Mova o item de
+   `pendentes` para `agendadas` com `status:"agendado"` (ou `"atrasado"` se
+   `data_alvo` já é anterior a hoje) e `concluido_em:null`.
+3. Para cada item já em `agendadas` com `status` diferente de `"feito"`:
+   reavalie `status` — `"atrasado"` se `data_alvo < hoje`, senão
+   `"agendado"`. **Nunca** altere itens com `status:"feito"` (é o usuário
+   quem marca, clicando "Feito 👍🏻" no site — não a Routine).
+4. Escreva `build/acoes_agendadas.json` de volta (mesmo schema, `pendentes`
+   deve ficar vazio de itens já processados) e inclua no mesmo commit/push
+   que já publica `relatorios.json` (`git add build/relatorios.json
+   build/acoes_agendadas.json`).
+
+Nunca invente uma ação agendada que o usuário não escreveu, e nunca decida
+sozinha "cortar"/"escalar" uma campanha com base num lembrete — a Routine só
+organiza o lembrete e calcula a data; a decisão de agir continua manual (o
+usuário vê o badge "Atrasado" no site e decide).

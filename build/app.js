@@ -461,6 +461,141 @@ const SAMPLE_MIN_SPEND = (B.sample_min_spend!=null?B.sample_min_spend:100);
 const SAMPLE_MIN_MQLS  = (B.sample_min_mqls!=null?B.sample_min_mqls:3);
 const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+/* ---- Ações Agendadas (lembretes por campanha/conjunto/anúncio) ----
+   Site estático sem backend: o botão de lembrete grava direto em
+   build/acoes_agendadas.json via GitHub Contents API, com um PAT
+   fine-grained (Contents: Read/write, só este repo) injetado no build pela
+   env SCHED_PAT (ver build.py/deploy.yml). A rotina diária de IA (23h59 BRT)
+   lê "pendentes", calcula a data-alvo e move para "agendadas"; o botão
+   "Feito" marca status:"feito" direto. Overlay otimista local só para a UI
+   refletir o clique na hora, sem esperar o próximo build (~30 min). */
+const GH_OWNER = B.gh_owner || 'metrics-odr';
+const GH_REPO  = B.gh_repo  || 'dash-marcelo';
+const GH_BRANCH = B.gh_branch || 'main';
+const GH_PAT = B.gh_pat || '';
+const ACOES_PATH = 'build/acoes_agendadas.json';
+let ACOES = DATA.acoes_agendadas || {pendentes:[], agendadas:[]};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function b64EncodeUtf8(s){ return btoa(unescape(encodeURIComponent(s))); }
+function b64DecodeUtf8(s){ return decodeURIComponent(escape(atob(s.replace(/\n/g,'')))); }
+
+/* GET conteúdo+sha, aplica mutateFn no JSON em memória, PUT de volta.
+   409 (sha desatualizado por escrita concorrente) -> 1 retry automático. */
+async function ghCommitFile(mutateFn, message){
+  if(!GH_PAT) throw new Error('Ações Agendadas: token de escrita não configurado neste build (secret SCHEDULED_ACTIONS_PAT ausente).');
+  const api=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${ACOES_PATH}`;
+  const headers={'Authorization':'Bearer '+GH_PAT,'Accept':'application/vnd.github+json'};
+  let lastErr=null;
+  for(let attempt=0; attempt<2; attempt++){
+    const cur=await fetch(api+'?ref='+GH_BRANCH,{headers});
+    if(!cur.ok) throw new Error('Falha ao ler '+ACOES_PATH+' (HTTP '+cur.status+')');
+    const curJson=await cur.json();
+    const obj=JSON.parse(b64DecodeUtf8(curJson.content));
+    mutateFn(obj);
+    const body={message, content:b64EncodeUtf8(JSON.stringify(obj,null,2)), sha:curJson.sha, branch:GH_BRANCH};
+    const put=await fetch(api,{method:'PUT',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(put.ok) return obj;
+    if(put.status===409 && attempt===0){ lastErr=new Error('conflito de escrita, tentando de novo'); continue; }
+    throw new Error('Falha ao salvar '+ACOES_PATH+' (HTTP '+put.status+')');
+  }
+  throw lastErr||new Error('Falha ao salvar '+ACOES_PATH);
+}
+
+function schedHasOpen(nivel,nome){
+  return (ACOES.pendentes||[]).some(x=>x.nivel===nivel&&x.nome===nome)
+    || (ACOES.agendadas||[]).some(x=>x.nivel===nivel&&x.nome===nome&&x.status!=='feito');
+}
+function schedIsOverdue(nivel,nome){
+  return (ACOES.agendadas||[]).some(x=>x.nivel===nivel&&x.nome===nome&&x.status!=='feito'&&x.data_alvo&&x.data_alvo<TODAY);
+}
+function schedIconHtml(nivel,nome){
+  const open=schedHasOpen(nivel,nome), overdue=schedIsOverdue(nivel,nome);
+  const cls='sched-icon'+(open?(overdue?' on overdue':' on'):' off');
+  const ttl=open?(overdue?'Ação agendada atrasada':'Tem ação agendada'):'Adicionar lembrete';
+  return `<button type="button" class="${cls}" data-nivel="${escHtml(nivel)}" data-nome="${escHtml(nome)}" title="${escHtml(ttl)}">⏱</button>`;
+}
+/* liga o clique do ícone de relógio em CADA linha da tabela (roda de novo a
+   cada re-render, igual ao padrão de status/link das tabelas de anúncio) */
+function wireSchedIcons(table, nivel, structResolver){
+  table.querySelectorAll('tbody .sched-icon').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const nome=btn.dataset.nome;
+      openReminderModal(nivel, nome, (structResolver&&structResolver(nome))||{});
+    });
+  });
+}
+
+/* ---- modal genérico (backdrop + card) — reusado p/ "novo lembrete" e "ver estrutura" ---- */
+function openModal(html){
+  const root=document.getElementById('modalRoot'); if(!root) return;
+  document.getElementById('modalCard').innerHTML=html;
+  root.hidden=false;
+}
+function closeModal(){
+  const root=document.getElementById('modalRoot'); if(!root) return;
+  root.hidden=true; document.getElementById('modalCard').innerHTML='';
+}
+
+function structHtml(struct){
+  const row=(label,v)=>`<div class="struct-row"><span class="struct-lbl">${label}</span><span class="struct-val">${v?escHtml(v):'—'}</span></div>`;
+  return row('Campanha',struct.camp)+row('Conjunto',struct.adset)+row('Anúncio',struct.ad);
+}
+
+function openReminderModal(nivel,nome,struct){
+  const niveis={campanha:'Campanha',conjunto:'Conjunto',anuncio:'Anúncio'};
+  openModal(`
+    <div class="modal-head"><h3>Novo lembrete — ${niveis[nivel]||nivel}</h3><button type="button" class="modal-x" onclick="closeModal()">✕</button></div>
+    <div class="struct-box">${structHtml({...struct, [nivel==='campanha'?'camp':nivel==='conjunto'?'adset':'ad']:nome})}</div>
+    <textarea id="remText" class="modal-textarea" rows="4" placeholder="Ex.: Conferir CAC em 5 dias, se continuar baixo, aumenta pra R$ 100/dia"></textarea>
+    <div class="modal-foot"><span id="remErr" class="modal-err"></span>
+      <button type="button" class="btn" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn primary" id="remSave">Salvar</button>
+    </div>`);
+  document.getElementById('remSave').addEventListener('click', async ()=>{
+    const ta=document.getElementById('remText'), errEl=document.getElementById('remErr'), btn=document.getElementById('remSave');
+    const texto=(ta.value||'').trim();
+    if(!texto){ errEl.textContent='Escreva o lembrete antes de salvar.'; return; }
+    const item={id:uid(), texto, nivel, nome, campanha:struct.camp||(nivel==='campanha'?nome:''), conjunto:struct.adset||(nivel==='conjunto'?nome:''), criado_em:new Date().toISOString()};
+    btn.disabled=true; btn.textContent='Salvando…'; errEl.textContent='';
+    try{
+      await ghCommitFile(obj=>{ obj.pendentes=obj.pendentes||[]; obj.pendentes.push(item); }, 'Ações Agendadas: novo lembrete ('+nome+')');
+      ACOES.pendentes=ACOES.pendentes||[]; ACOES.pendentes.push(item);   // overlay otimista
+      closeModal();
+      renderAll();
+    }catch(err){ errEl.textContent=String(err.message||err); btn.disabled=false; btn.textContent='Salvar'; }
+  });
+}
+
+function openStructModal(struct){
+  openModal(`
+    <div class="modal-head"><h3>Estrutura completa</h3><button type="button" class="modal-x" onclick="closeModal()">✕</button></div>
+    <div class="struct-box">${structHtml(struct)}</div>`);
+}
+
+/* "Quando" (data-alvo vs hoje) + status ao vivo (atrasado é sempre recalculado
+   na hora, mesmo que a rotina só rode 1x/dia — evita ficar "agendado" o dia
+   inteiro depois que o prazo já passou) */
+function schedQuandoLabel(dataAlvo){
+  if(!dataAlvo) return '—';
+  if(dataAlvo===TODAY) return 'Hoje';
+  if(dataAlvo===addDays(TODAY,1)) return 'Amanhã';
+  if(dataAlvo<TODAY){ const dias=Math.round((new Date(TODAY+'T00:00:00')-new Date(dataAlvo+'T00:00:00'))/86400000); return 'Atrasado '+dias+'d'; }
+  return brdate(dataAlvo);
+}
+function schedLiveStatus(item){
+  if(item.status==='feito') return 'feito';
+  if(item.data_alvo && item.data_alvo<TODAY) return 'atrasado';
+  return item.status||'agendado';
+}
+function schedStatusBadge(item){
+  const st=schedLiveStatus(item);
+  const map={agendado:['c-blue','Agendado'],atrasado:['c-red','Atrasado'],feito:['c-green','Feito']};
+  const [cls,label]=map[st]||map.agendado;
+  return `<span class="rel-chip ${cls}">${label}</span>`;
+}
+
 /* ---- Metas & parâmetros (painel editável) — ajusta cores/amostra AO VIVO ----
    Defaults vêm do build.py; o usuário edita no painel (persistido em
    localStorage 'dm_metas') e as tabelas de anúncio recoram CPMQL/CAC e reavaliam
@@ -514,6 +649,20 @@ function adStructMap(fM,fL){
   fL.forEach(r=>{ if(!out[r.ad]) out[r.ad]={camp:r.camp,adset:r.adset}; });
   return out;
 }
+/* conjunto -> campanha dominante por gasto no Meta (mesmo padrão de adStructMap,
+   usado para resolver a estrutura ao abrir o popup de lembrete num conjunto). */
+function adsetStructMap(fM,fL){
+  const acc={};
+  fM.forEach(r=>{ const byCamp=acc[r.adset]=acc[r.adset]||{}; byCamp[r.camp]=(byCamp[r.camp]||0)+r.sp; });
+  const out={};
+  Object.entries(acc).forEach(([adset,byCamp])=>{
+    let best=null;
+    Object.entries(byCamp).forEach(([camp,sp])=>{ if(!best||sp>best.sp) best={camp,sp}; });
+    out[adset]={camp:best.camp};
+  });
+  fL.forEach(r=>{ if(!out[r.adset]) out[r.adset]={camp:r.camp}; });
+  return out;
+}
 /* amostra relevante para JULGAR o anúncio (senão: "Em observação"). O limiar de
    MQLs vem do painel de metas (volume mínimo amostral), editável ao vivo. */
 function adSampleOk(a){ return a.sp>=SAMPLE_MIN_SPEND && a.mqls>=METAS.volMin; }
@@ -561,7 +710,8 @@ const statusChip=obs=>obs?'<span class="rel-chip c-yellow">Em observação</span
 function relRenderAdTable(id,list){
   const el=document.getElementById(id); if(!el) return;
   const cols=[
-    {key:'ad',label:'Anúncio',type:'dim',big:true,stk:'l1'},{key:'status',label:'Status',type:'dim',w:140},
+    {key:'sched',label:'',type:'html',w:34,stk:'l1'},
+    {key:'ad',label:'Anúncio',type:'dim',big:true,stk:'l2'},{key:'status',label:'Status',type:'dim',w:140},
     {key:'camp',label:'Campanha',type:'dim',big:true},{key:'adset',label:'Conjunto',type:'dim',big:true},
     {key:'gasto',label:'Gasto',type:'brl'},{key:'im',label:'Impr.',type:'int'},
     {key:'cpm',label:'CPM',type:'brl'},{key:'ctr',label:'CTR',type:'pct'},
@@ -582,7 +732,8 @@ function relRenderAdTable(id,list){
   const rows=list.map(item=>{
     const cells=adRowCells(item.ad,item.a,item.struct);
     cells.status='';  // placeholder textual; o chip real entra via afterRender
-    return {k:item.ad, cells, _obs:item.obs, _cpmql:cells._cpmql, _cac:cells._cac};
+    cells.sched='';   // placeholder; o ícone (com listener) entra via afterRender
+    return {k:item.ad, cells, _obs:item.obs, _cpmql:cells._cpmql, _cac:cells._cac, _struct:item.struct};
   });
   renderTable({
     id, cols, rows, center:true,   // Mar10: só as MÉTRICAS centralizam; dim fica à esquerda (CSS .dt-center)
@@ -595,11 +746,13 @@ function relRenderAdTable(id,list){
         cols.forEach((c,ci)=>{
           if(ci>=tds.length) return;
           const td=tds[ci];
+          if(c.key==='sched') td.innerHTML=schedIconHtml('anuncio',item.k);
           if(c.key==='status') td.innerHTML=statusChip(item._obs);
           if(c.key==='cpmql'){ const mc=metaColorClass(item._cpmql,METAS.cpmql); if(mc) td.classList.add(mc); }
           if(c.key==='cac'){ const mc=metaColorClass(item._cac,METAS.cac); if(mc) td.classList.add(mc); }
         });
       });
+      wireSchedIcons(table,'anuncio',nome=>{ const r=sortedRows.find(x=>x.k===nome); return r?r._struct:{}; });
     }
   });
 }
@@ -710,6 +863,56 @@ function renderRelAds(){
     champs+' '+(champs===1?'campeão':'campeões')+' de '+all.length+' anúncio'+(all.length===1?'':'s')+' com gasto';
 }
 
+/* Ações Agendadas: tabela da aba Relatório com os lembretes já processados
+   pela rotina diária (ACOES.agendadas). "pendentes" ainda não foram
+   interpretados (a rotina roda 1x/dia, 23h59 BRT) — mostra uma nota avisando
+   quantos aguardam processamento. Clique no nome da estrutura abre o popup
+   com o trio completo; botão "Feito" marca a ação como concluída. */
+function renderReminders(){
+  const wrap=document.getElementById('relSchedWrap'); if(!wrap) return;
+  const list=(ACOES.agendadas||[]).slice().sort((a,b)=>{
+    const sa=schedLiveStatus(a), sb=schedLiveStatus(b);
+    const ord={atrasado:0,agendado:1,feito:2};
+    if(ord[sa]!==ord[sb]) return ord[sa]-ord[sb];
+    return (a.data_alvo||'')<(b.data_alvo||'')?-1:1;
+  });
+  const nPend=(ACOES.pendentes||[]).length;
+  const noteEl=document.getElementById('relSchedNote');
+  if(noteEl) noteEl.textContent = nPend
+    ? nPend+' lembrete'+(nPend===1?'':'s')+' aguardando processamento pela rotina diária (23h59 BRT).'
+    : 'Lembretes processados pela rotina diária (23h59 BRT), que calcula o prazo e o status a partir do texto.';
+  if(!list.length){ wrap.innerHTML='<div class="rel-brief-empty">Nenhuma ação agendada ainda. Clique no ícone ⏱ de uma campanha/conjunto/anúncio para criar um lembrete.</div>'; return; }
+  const niveis={campanha:'Campanha',conjunto:'Conjunto',anuncio:'Anúncio'};
+  wrap.innerHTML = `<table class="dt" id="relSched"><thead><tr>
+      <th>Ação Agendada</th><th>Estrutura atrelada</th><th>Quando</th><th>Status</th>
+    </tr></thead><tbody>${list.map(item=>{
+      const st=schedLiveStatus(item);
+      const done=st==='feito';
+      return `<tr>
+        <td class="dim" title="${escHtml(item.texto)}">${escHtml(item.acao_resumo||item.texto)}</td>
+        <td class="dim"><button type="button" class="struct-link" data-id="${escHtml(item.id)}" title="${escHtml(niveis[item.nivel]||item.nivel)}: ${escHtml(item.nome)}">${escHtml(item.nome)}</button></td>
+        <td>${escHtml(schedQuandoLabel(item.data_alvo))}</td>
+        <td>${schedStatusBadge(item)} ${done?'':`<button type="button" class="btn sched-done" data-id="${escHtml(item.id)}">Feito 👍🏻</button>`}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  wrap.querySelectorAll('.struct-link').forEach(b=>b.addEventListener('click',()=>{
+    const item=list.find(x=>x.id===b.dataset.id); if(!item) return;
+    openStructModal({camp:item.campanha,adset:item.conjunto,ad:item.nivel==='anuncio'?item.nome:''});
+  }));
+  wrap.querySelectorAll('.sched-done').forEach(b=>b.addEventListener('click', async ()=>{
+    const item=list.find(x=>x.id===b.dataset.id); if(!item) return;
+    b.disabled=true; b.textContent='Salvando…';
+    try{
+      await ghCommitFile(obj=>{
+        const it=(obj.agendadas||[]).find(x=>x.id===item.id);
+        if(it){ it.status='feito'; it.concluido_em=new Date().toISOString(); }
+      }, 'Ações Agendadas: marca "'+item.nome+'" como feito');
+      item.status='feito'; item.concluido_em=new Date().toISOString();   // overlay otimista
+      renderReminders();
+    }catch(err){ alert(String(err.message||err)); b.disabled=false; b.textContent='Feito 👍🏻'; }
+  }));
+}
+
 /* nota de referência do painel de metas (mostra as metas ativas + legenda de cor) */
 function renderMetasNote(){
   const el=document.getElementById('relMetasNote'); if(!el) return;
@@ -739,6 +942,7 @@ function renderRelatorio(){
 
   renderMetasNote();
   renderRelAds();
+  renderReminders();
   renderRelBrief();
 }
 
@@ -821,6 +1025,7 @@ function renderMeta(){
   // hierarquia — cada tabela vem do escopo que exclui a PRÓPRIA dimensão,
   // então todas as linhas irmãs continuam visíveis para multi-seleção (Ctrl).
   const hcols=[
+    {key:'sched',label:'',type:'html',w:34},
     {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
     {key:'ctr',label:'CTR',type:'pct'},{key:'convf',label:'ConvForm',type:'pct'},
     {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
@@ -830,21 +1035,32 @@ function renderMeta(){
     {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num'},
   ];
   function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a),s=salesOf(a);
-    return {k, cells:{dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
+    return {k, cells:{sched:'',dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
       convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas}};}); }
-  function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
+  function totRowOf(tt){const d=derive(tt),s=salesOf(tt);return{sched:'',dim:null,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:tt.leads,cpl:d.cpl,tx:d.tx,mqls:tt.mqls,cpmql:d.cpmql,
     convmql:s.convmql,vendas:s.vendas,cac:s.cac,fat:s.fat,tm:s.tm,roas:s.roas};}
   const Sc=metaScope('C'), Sa=metaScope('A'), Sd=metaScope('D');
   const aggC=buildAgg(Sc.fL,Sc.fM,'camp'), aggA=buildAgg(Sa.fL,Sa.fM,'adset'), aggD=buildAgg(Sd.fL,Sd.fM,'ad');
+  // Ações Agendadas: resolve a campanha/conjunto de cada linha para o popup de
+  // lembrete (mesmo padrão do adStructMap já usado na aba Relatório).
+  const adStruct=adStructMap(fM,fL), adsetStruct=adsetStructMap(fM,fL);
+  const schedAfter=(nivel,structResolver)=>(table,rows)=>{
+    table.querySelectorAll('tbody tr').forEach((tr,idx)=>{ const r=rows[idx]; if(!r) return;
+      const td=tr.querySelector('td'); if(td) td.innerHTML=schedIconHtml(nivel,r.k); });
+    wireSchedIcons(table,nivel,structResolver);
+  };
   // Tabelas hierárquicas: NÃO usam "fit" — a dimensão (campanha/conjunto/anúncio)
   // tem largura automática p/ caber o nome INTEIRO por padrão, nunca quebra linha,
   // é redimensionável (arrastar borda) e 2 cliques na borda auto-ajusta (Sheets/Looker).
-  renderTable({id:'tCamp', cols:hcols.map((c,i)=>i===0?{...c,label:'Campanha'}:c), rows:hierRows(aggC), total:totRowOf(totals(Sc.fL,Sc.fM)),
-    selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAdset', cols:hcols.map((c,i)=>i===0?{...c,label:'Conjunto',big:true}:c), rows:hierRows(aggA), total:totRowOf(totals(Sa.fL,Sa.fM)),
-    selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey))});
-  renderTable({id:'tAd', cols:hcols.map((c,i)=>i===0?{...c,label:'Anúncio'}:c), rows:hierRows(aggD), total:totRowOf(totals(Sd.fL,Sd.fM)),
-    selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey))});
+  renderTable({id:'tCamp', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Campanha'}:c), rows:hierRows(aggC), total:totRowOf(totals(Sc.fL,Sc.fM)),
+    selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey)),
+    afterRender:schedAfter('campanha',nome=>({camp:nome}))});
+  renderTable({id:'tAdset', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Conjunto',big:true}:c), rows:hierRows(aggA), total:totRowOf(totals(Sa.fL,Sa.fM)),
+    selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey)),
+    afterRender:schedAfter('conjunto',nome=>({camp:(adsetStruct[nome]||{}).camp, adset:nome}))});
+  renderTable({id:'tAd', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Anúncio'}:c), rows:hierRows(aggD), total:totRowOf(totals(Sd.fL,Sd.fM)),
+    selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey)),
+    afterRender:schedAfter('anuncio',nome=>({camp:(adStruct[nome]||{}).camp, adset:(adStruct[nome]||{}).adset, ad:nome}))});
 
   // Mar03/Mar10: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha
   // por membro, com legenda própria (cor · nome completo · CPMQL) e filtro bidirecional
@@ -976,6 +1192,9 @@ document.getElementById('ppCancel').addEventListener('click',ppClose);
 document.getElementById('periodPop').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click',()=>{ if(ppIsOpen()) ppClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClose(); });
+/* modal genérico (Ações Agendadas) — fecha ao clicar no backdrop ou Esc */
+document.getElementById('modalRoot').addEventListener('click',e=>{ if(e.target.id==='modalRoot'||e.target.classList.contains('modal-backdrop')) closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
