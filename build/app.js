@@ -22,6 +22,15 @@ function pad(n){return String(n).padStart(2,'0');}
 function dstr(dt){return dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());}
 function addDays(s,n){const dt=new Date(s+'T00:00:00');dt.setDate(dt.getDate()+n);return dstr(dt);}
 const TODAY = B.today || B.date_max;
+/* timestamp em BRT (UTC-3, sem horário de verão no Brasil desde 2019) com
+   offset explícito — toISOString() grava em UTC, o que empurra lembretes
+   criados após 21h BRT para o dia seguinte (bug: a rotina usa criado_em como
+   âncora de "hoje"/"amanhã"). */
+function nowBRTIso(){
+  const brt=new Date(Date.now()-3*3600*1000);
+  return brt.getUTCFullYear()+'-'+pad(brt.getUTCMonth()+1)+'-'+pad(brt.getUTCDate())+'T'
+    +pad(brt.getUTCHours())+':'+pad(brt.getUTCMinutes())+':'+pad(brt.getUTCSeconds())+'-03:00';
+}
 
 /* ---------------- STATE ---------------- */
 const STATE = {
@@ -557,7 +566,7 @@ function openReminderModal(nivel,nome,struct){
     const ta=document.getElementById('remText'), errEl=document.getElementById('remErr'), btn=document.getElementById('remSave');
     const texto=(ta.value||'').trim();
     if(!texto){ errEl.textContent='Escreva o lembrete antes de salvar.'; return; }
-    const item={id:uid(), texto, nivel, nome, campanha:struct.camp||(nivel==='campanha'?nome:''), conjunto:struct.adset||(nivel==='conjunto'?nome:''), criado_em:new Date().toISOString()};
+    const item={id:uid(), texto, nivel, nome, campanha:struct.camp||(nivel==='campanha'?nome:''), conjunto:struct.adset||(nivel==='conjunto'?nome:''), criado_em:nowBRTIso()};
     btn.disabled=true; btn.textContent='Salvando…'; errEl.textContent='';
     try{
       await ghCommitFile(obj=>{ obj.pendentes=obj.pendentes||[]; obj.pendentes.push(item); }, 'Ações Agendadas: novo lembrete ('+nome+')');
@@ -905,9 +914,9 @@ function renderReminders(){
     try{
       await ghCommitFile(obj=>{
         const it=(obj.agendadas||[]).find(x=>x.id===item.id);
-        if(it){ it.status='feito'; it.concluido_em=new Date().toISOString(); }
+        if(it){ it.status='feito'; it.concluido_em=nowBRTIso(); }
       }, 'Ações Agendadas: marca "'+item.nome+'" como feito');
-      item.status='feito'; item.concluido_em=new Date().toISOString();   // overlay otimista
+      item.status='feito'; item.concluido_em=nowBRTIso();   // overlay otimista
       renderReminders();
     }catch(err){ alert(String(err.message||err)); b.disabled=false; b.textContent='Feito 👍🏻'; }
   }));
