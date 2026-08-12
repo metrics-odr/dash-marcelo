@@ -594,13 +594,14 @@ function schedQuandoLabel(dataAlvo){
   return brdate(dataAlvo);
 }
 function schedLiveStatus(item){
+  if(item._pending) return 'pendente';
   if(item.status==='feito') return 'feito';
   if(item.data_alvo && item.data_alvo<TODAY) return 'atrasado';
   return item.status||'agendado';
 }
 function schedStatusBadge(item){
   const st=schedLiveStatus(item);
-  const map={agendado:['c-blue','Agendado'],atrasado:['c-red','Atrasado'],feito:['c-green','Feito']};
+  const map={agendado:['c-blue','Agendado'],atrasado:['c-red','Atrasado'],feito:['c-green','Feito'],pendente:['c-yellow','Pendente']};
   const [cls,label]=map[st]||map.agendado;
   return `<span class="rel-chip ${cls}">${label}</span>`;
 }
@@ -879,16 +880,19 @@ function renderRelAds(){
    com o trio completo; botão "Feito" marca a ação como concluída. */
 function renderReminders(){
   const wrap=document.getElementById('relSchedWrap'); if(!wrap) return;
-  const list=(ACOES.agendadas||[]).slice().sort((a,b)=>{
+  // "pendentes" ainda não passaram pela rotina (sem data_alvo/acao_resumo) —
+  // entram na tabela igual, com status "Pendente", pra confirmar na hora que
+  // o lembrete foi salvo e com o nome certo (não só o ícone mudando de cor).
+  const pend=(ACOES.pendentes||[]).map(x=>({...x, _pending:true}));
+  const list=[...pend, ...(ACOES.agendadas||[])].sort((a,b)=>{
     const sa=schedLiveStatus(a), sb=schedLiveStatus(b);
-    const ord={atrasado:0,agendado:1,feito:2};
+    const ord={atrasado:0,pendente:1,agendado:2,feito:3};
     if(ord[sa]!==ord[sb]) return ord[sa]-ord[sb];
     return (a.data_alvo||'')<(b.data_alvo||'')?-1:1;
   });
-  const nPend=(ACOES.pendentes||[]).length;
   const noteEl=document.getElementById('relSchedNote');
-  if(noteEl) noteEl.textContent = nPend
-    ? nPend+' lembrete'+(nPend===1?'':'s')+' aguardando processamento pela rotina diária (23h59 BRT).'
+  if(noteEl) noteEl.textContent = pend.length
+    ? pend.length+' lembrete'+(pend.length===1?'':'s')+' salvo'+(pend.length===1?'':'s')+', aguardando a rotina diária (23h59 BRT) calcular o prazo.'
     : 'Lembretes processados pela rotina diária (23h59 BRT), que calcula o prazo e o status a partir do texto.';
   if(!list.length){ wrap.innerHTML='<div class="rel-brief-empty">Nenhuma ação agendada ainda. Clique no ícone ⏱ de uma campanha/conjunto/anúncio para criar um lembrete.</div>'; return; }
   const niveis={campanha:'Campanha',conjunto:'Conjunto',anuncio:'Anúncio'};
@@ -896,12 +900,12 @@ function renderReminders(){
       <th>Ação Agendada</th><th>Estrutura atrelada</th><th>Quando</th><th>Status</th>
     </tr></thead><tbody>${list.map(item=>{
       const st=schedLiveStatus(item);
-      const done=st==='feito';
+      const showBtn=(st!=='feito' && st!=='pendente');
       return `<tr>
         <td class="dim" title="${escHtml(item.texto)}">${escHtml(item.acao_resumo||item.texto)}</td>
         <td class="dim"><button type="button" class="struct-link" data-id="${escHtml(item.id)}" title="${escHtml(niveis[item.nivel]||item.nivel)}: ${escHtml(item.nome)}">${escHtml(item.nome)}</button></td>
         <td>${escHtml(schedQuandoLabel(item.data_alvo))}</td>
-        <td>${schedStatusBadge(item)} ${done?'':`<button type="button" class="btn sched-done" data-id="${escHtml(item.id)}">Feito 👍🏻</button>`}</td>
+        <td>${schedStatusBadge(item)} ${showBtn?`<button type="button" class="btn sched-done" data-id="${escHtml(item.id)}">Feito 👍🏻</button>`:''}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
   wrap.querySelectorAll('.struct-link').forEach(b=>b.addEventListener('click',()=>{
