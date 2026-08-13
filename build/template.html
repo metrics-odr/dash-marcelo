@@ -207,16 +207,22 @@
         </div>
 
 
-        <!-- ---- Ações Agendadas: lembretes por campanha/conjunto/anúncio (⏱ nas tabelas) ---- -->
-        <h2 class="sec-title">Ações Agendadas</h2>
-        <div class="card" style="padding:0">
-          <div class="tbl-wrap" id="relSchedWrap"></div>
-          <p class="note" id="relSchedNote"></p>
-        </div>
+        <!-- ---- Ações Agendadas (lembretes por campanha/conjunto/anúncio) + Insights de Tráfego, lado a lado 50/50 ---- -->
+        <div class="grid rel-split">
+          <div class="rel-split-col">
+            <h2 class="sec-title">Ações Agendadas</h2>
+            <div class="card" style="padding:0">
+              <div class="tbl-wrap" id="relSchedWrap"></div>
+              <p class="note" id="relSchedNote"></p>
+            </div>
+          </div>
 
-        <h2 class="sec-title">Insights de Tráfego</h2>
-        <div class="rel-brief" id="relBrief"></div>
-        <p class="note" id="relBriefStamp"></p>
+          <div class="rel-split-col">
+            <h2 class="sec-title">Insights de Tráfego</h2>
+            <div class="rel-brief" id="relBrief"></div>
+            <p class="note" id="relBriefStamp"></p>
+          </div>
+        </div>
       </div>
 
       <div class="foot">Atualizado automaticamente a cada ~30 min via GitHub Actions + cron‑job.org. Somente leitura das planilhas. <span id="buildFoot2"></span></div>
