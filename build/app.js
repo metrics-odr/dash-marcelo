@@ -827,26 +827,29 @@ const QUAD_TITLES={
 };
 
 function renderRelBrief(){
-  const wrap=document.getElementById('relBrief'), stampEl=document.getElementById('relBriefStamp');
+  const top=document.getElementById('relBriefTop'), quads=document.getElementById('relBriefQuads'),
+    stampEl=document.getElementById('relBriefStamp');
   const bf=DATA.briefings||{}, per=bf.periodos||{}, key=relBriefKey();
   stampEl.textContent = bf.generated_at ? `Insights gerados por IA · última atualização ${bf.generated_at} · atualiza 1×/dia (23h59 BRT)` : '';
+  quads.style.display='none'; quads.innerHTML='';
   if(!Object.keys(per).length){
-    wrap.innerHTML='<div class="rel-brief-empty">Os insights por IA ainda não foram gerados. São atualizados automaticamente 1×/dia.</div>'; return; }
+    top.innerHTML='<div class="rel-brief-empty">Os insights por IA ainda não foram gerados. São atualizados automaticamente 1×/dia.</div>'; return; }
   if(!key || !per[key]){
-    wrap.innerHTML='<div class="rel-brief-empty">Insights disponíveis para os períodos predefinidos (Hoje, Ontem, 3, 7, 14, 30 dias, Este mês, Mês passado, Todo período). Selecione um desses no seletor de período.</div>'; return; }
+    top.innerHTML='<div class="rel-brief-empty">Insights disponíveis para os períodos predefinidos (Hoje, Ontem, 3, 7, 14, 30 dias, Este mês, Mês passado, Todo período). Selecione um desses no seletor de período.</div>'; return; }
   const item=per[key];
 
   const temQuadrantes = item.quadro1_resumo || item.quadro2_diagnostico || item.quadro3_campeoes || item.quadro4_acoes;
   if(temQuadrantes){
-    const quads = Object.keys(QUAD_TITLES).map(k=>
+    const cards = Object.keys(QUAD_TITLES).map(k=>
       `<div class="rel-quad-card"><h4>${QUAD_TITLES[k]}</h4><div class="rel-quad-body rel-brief">${item[k]||'<p>—</p>'}</div></div>`
     ).join('');
-    wrap.innerHTML = renderHealthBadge(item.nota_saude) + renderWhatsappBlock(item.whatsapp) +
-      `<div class="rel-quad-grid">${quads}</div>`;
+    top.innerHTML = renderHealthBadge(item.nota_saude) + renderWhatsappBlock(item.whatsapp);
+    quads.innerHTML = `<div class="rel-quad-grid">${cards}</div>`;
+    quads.style.display='';
     return;
   }
 
-  wrap.innerHTML = item.html || item.texto || '<div class="rel-brief-empty">Sem conteúdo.</div>';
+  top.innerHTML = item.html || item.texto || '<div class="rel-brief-empty">Sem conteúdo.</div>';
 }
 
 /* Top Anúncios (separado p/ recolorir sem re-renderizar os gráficos quando o
