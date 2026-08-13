@@ -207,8 +207,14 @@
         </div>
 
 
-        <!-- ---- Ações Agendadas (lembretes por campanha/conjunto/anúncio) + Insights de Tráfego, lado a lado 50/50 ---- -->
+        <!-- ---- Leitura em ordem de importância: nota do funil + WhatsApp (esquerda) primeiro,
+             Ações Agendadas (direita) em seguida — lado a lado 50/50, mesma altura ---- -->
         <div class="grid rel-split">
+          <div class="rel-split-col">
+            <h2 class="sec-title">Insights de Tráfego</h2>
+            <div class="rel-brief" id="relBriefTop"></div>
+          </div>
+
           <div class="rel-split-col">
             <h2 class="sec-title">Ações Agendadas</h2>
             <div class="card" style="padding:0">
@@ -216,13 +222,9 @@
               <p class="note" id="relSchedNote"></p>
             </div>
           </div>
-
-          <div class="rel-split-col">
-            <h2 class="sec-title">Insights de Tráfego</h2>
-            <div class="rel-brief" id="relBriefTop"></div>
-          </div>
         </div>
 
+        <h2 class="sec-title" id="relBriefQuadsTitle" style="display:none">Detalhes do funil e sugestões</h2>
         <div class="rel-brief" id="relBriefQuads"></div>
         <p class="note" id="relBriefStamp"></p>
       </div>

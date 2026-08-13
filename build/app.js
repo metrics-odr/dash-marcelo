@@ -828,10 +828,10 @@ const QUAD_TITLES={
 
 function renderRelBrief(){
   const top=document.getElementById('relBriefTop'), quads=document.getElementById('relBriefQuads'),
-    stampEl=document.getElementById('relBriefStamp');
+    quadsTitle=document.getElementById('relBriefQuadsTitle'), stampEl=document.getElementById('relBriefStamp');
   const bf=DATA.briefings||{}, per=bf.periodos||{}, key=relBriefKey();
   stampEl.textContent = bf.generated_at ? `Insights gerados por IA · última atualização ${bf.generated_at} · atualiza 1×/dia (23h59 BRT)` : '';
-  quads.style.display='none'; quads.innerHTML='';
+  quads.style.display='none'; quads.innerHTML=''; quadsTitle.style.display='none';
   if(!Object.keys(per).length){
     top.innerHTML='<div class="rel-brief-empty">Os insights por IA ainda não foram gerados. São atualizados automaticamente 1×/dia.</div>'; return; }
   if(!key || !per[key]){
@@ -845,7 +845,7 @@ function renderRelBrief(){
     ).join('');
     top.innerHTML = renderHealthBadge(item.nota_saude) + renderWhatsappBlock(item.whatsapp);
     quads.innerHTML = `<div class="rel-quad-grid">${cards}</div>`;
-    quads.style.display='';
+    quads.style.display=''; quadsTitle.style.display='';
     return;
   }
 
