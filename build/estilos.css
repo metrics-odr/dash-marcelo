@@ -109,10 +109,16 @@
   .trio > .card{display:flex; flex-direction:column; min-width:0}
   .trio > .card > .chart-box, .trio > .card > .donut-wrap, .trio > .card > .tbl-wrap{flex:1 1 auto; min-height:0}
   .row4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; align-content:start}
-  /* Relatório: Ações Agendadas + Insights de Tráfego 50/50 na mesma linha */
-  .rel-split{grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start}
-  .rel-split-col{min-width:0}
+  /* Relatório: Nota do funil + WhatsApp (esquerda) / Ações Agendadas (direita), 50/50,
+     mesma linha. align-items:stretch + coluna em flex-column: as 2 colunas ficam com a
+     MESMA altura (a mais alta manda) e o card de Ações Agendadas ocupa o espaço inteiro
+     mesmo com poucas linhas na tabela — não fica "flutuando" menor que o vizinho. */
+  .rel-split{grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch}
+  .rel-split-col{min-width:0; display:flex; flex-direction:column}
   .rel-split-col .sec-title{margin-top:0}
+  .rel-split-col > .card{flex:1 1 auto; display:flex; flex-direction:column}
+  .rel-split-col > .card > .tbl-wrap{flex:1 1 auto}
+  .rel-split-col > .card > .note{padding:0 15px 12px; margin-top:auto}
   @media(max-width:1000px){.two-col,.three-col,.funnel-grid,.rel-split{grid-template-columns:1fr}}
   @media(max-width:1200px){.funnel-charts{grid-template-columns:1fr}}
   @media(max-width:1200px){.trio{grid-template-columns:1fr} .row4{grid-template-columns:1fr 1fr}}
@@ -344,11 +350,18 @@
   .rel-brief h4:first-child{margin-top:0}
 
   /* ---- Quadrantes (2x2) ---- */
-  .rel-quad-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px}
+  .rel-quad-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px}
   .rel-quad-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; min-width:0}
   .rel-quad-card>h4{margin:0 0 10px; font-size:13px; color:var(--accent-blue); text-transform:uppercase; letter-spacing:.04em}
   .rel-quad-card .rel-quad-body{font-size:13.5px; line-height:1.6}
   @media (max-width: 980px){ .rel-quad-grid{grid-template-columns:1fr} }
+
+  /* ---- Variação em texto (Insights de Tráfego): verde/vermelho/laranja + negrito
+     para números que melhoraram/pioraram/mudaram pouco vs. período anterior.
+     Usado pelo texto gerado por IA em relatorios.json (ver GUIA-RELATORIOS.md). */
+  .delta-up{color:var(--good); font-weight:800}
+  .delta-down{color:var(--bad); font-weight:800}
+  .delta-mid{color:var(--yellow); font-weight:800}
 
   /* ---- Nota de saúde do funil ---- */
   .rel-health{border-radius:14px; padding:14px 20px; margin-bottom:14px; border:1px solid var(--border)}

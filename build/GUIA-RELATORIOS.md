@@ -335,6 +335,18 @@ CPP, CAC, volume de presenças, faturamento e ROAS — **nunca só por CPL/Tx MQ
 - HTML permitido nos quadrantes: `<p> <ul> <li> <b> <h4>` e
   `<span class="tag escala|otimiza|corte|observar">Escalar|Otimizar|Cortar|Observar</span>`
   (a classe de "Otimizar" é `otimiza`, não `otimizar`).
+- **Variação numérica em cor (Quadrantes 1 e 2 sobretudo):** todo número que expressa uma
+  mudança material vs. período anterior (`comparativo_periodo_anterior.variacao`, só
+  `material:true`) — "melhorou X%", "CPMQL caiu Y%", "Tx‑MQL subiu Z p.p." — vai dentro de
+  `<span class="delta-up">…</span>` (verde, negrito) se a mudança foi **boa** para o negócio,
+  `<span class="delta-down">…</span>` (vermelho, negrito) se foi **ruim**, ou
+  `<span class="delta-mid">…</span>` (laranja, negrito) para mudança pequena/mista/ambígua.
+  **O sinal aritmético não decide a cor** — o que decide é se a métrica melhorou ou piorou:
+  gasto/CPL/CPMQL/CAC **caindo** = `delta-up` (bom), **subindo** = `delta-down` (ruim); já
+  Leads/MQLs/Tx‑MQL/Vendas/ROAS **subindo** = `delta-up`, **caindo** = `delta-down`. Envolva só
+  o trecho do número/percentual (ex.: `CPMQL <span class="delta-up">caiu 12%</span>`), nunca a
+  frase inteira. Não use essas classes em números sem comparação (ex.: total absoluto do
+  período) nem em variações `material:false`.
 - Se um período não tiver dados, `nota_saude` vem com `nota:null`,
   `whatsapp` usa "Não disponível" nos campos numéricos, e os quadrantes
   trazem um texto curto dizendo que não houve investimento/atividade.
