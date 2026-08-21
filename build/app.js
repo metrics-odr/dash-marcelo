@@ -34,7 +34,7 @@ function nowBRTIso(){
 
 /* ---------------- STATE ---------------- */
 const STATE = {
-  page:'geral', from:B.date_min, to:B.date_max, preset:'todo', tax:false,
+  page:'geral', from:TODAY.slice(0,8)+'01', to:TODAY, preset:'mes', tax:true,
   selDays:new Set(),
   mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
