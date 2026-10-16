@@ -59,10 +59,12 @@ Seções com ícones SVG de traço único (`currentColor`, 1.75): **BTBExperienc
 com logo colorido · Report), **Distribuição** (Seguidores 🚀 · Video View · Iscas), **FSE · Empresas
 Parceiras** e **FSE · Sócio Executivo** (Visão Geral + Meta Ads). Video View/Iscas/FSE são placeholders
 "Funil não implementado" (`.empty-page`). `setPage()` é genérico (`PAGE_TITLES`, hash `#<page>`).
-**Seguidores** (`renderSeg` em `app.js`): gasto total/Marcelo/Auricelio (período + toggle de imposto) e
-**Pace ideal** = (verba mensal − gasto do mês ×1,13806) ÷ dias restantes (hoje incluso). Verba mensal é
-digitada na página (`localStorage dm_seg_*`). O gasto vem da aba Meta Ads filtrando campanha/conjunto/anúncio
-por `SEG_FILTRO` e `SEG_PERFIS` em `build.py` — **ajustar à convenção de nomes real das campanhas de seguidores**.
+**Seguidores** (`renderSeg` em `app.js`): lê a aba Meta Ads de OUTRA planilha
+(`SEG_SPREADSHEET_ID` `18vUk0oGseTAbOPknYtRSB0hW3_s0S2Fyga7K2iXv6Bo`, gid `1245628405`), só campanhas **C1**
+(`SEG_FILTRO`), perfil (Marcelo/Auricélio) pelo nome da campanha (`process_seg` em `build.py` → `DATA.seg`).
+Valor registrado **sem imposto**: ×1,13806 só com o toggle da topbar ligado. Mostra gasto total/Marcelo/Auricelio
+(período) e **Pace ideal** = (verba mensal − gasto do mês) ÷ dias restantes (hoje incluso). Verba mensal digitada
+na página (`localStorage dm_seg_*`). Falha ao ler a planilha não derruba o build (aba zerada). `--seg-file` p/ teste local.
 
 ### Aba Relatório (funil de evento presencial High Ticket)
 Terceira página (sidebar, entre Meta Ads e o rodapé). **Espelha a Visão Geral**

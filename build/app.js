@@ -1197,37 +1197,32 @@ function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
 function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='geral') renderGeral(); }
 
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
-   Gasto = linhas da aba Meta Ads cujo Campaign/Ad Set/Ad casa com B.seg_filtro,
-   atribuídas ao perfil (B.seg_perfis) cujo nome aparece no texto.
-   Pace ideal = (verba mensal − gasto do mês com imposto) / dias restantes até o fim do mês
-   (hoje incluso). O pace SEMPRE usa o imposto Meta (13,806%), independente do toggle. */
+   Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
+   `p` definido pelo nome da campanha). Gasto registrado SEM imposto: ×TAX só com o toggle ligado.
+   Pace ideal = (verba mensal − gasto do mês [c/ imposto se ligado]) ÷ dias restantes até o
+   fim do mês (hoje incluso). */
 const SEG_PERFIS=[['marcelo','Marcelo','segVerbaMarcelo'],['auricelio','Auricelio','segVerbaAuricelio']];
-let SEG_RE; try{ SEG_RE=new RegExp(B.seg_filtro||'seguidor','i'); }catch(e){ SEG_RE=/seguidor/i; }
-function segProfile(m){ const t=norm([m.camp,m.adset,m.ad].join(' '));
-  if(!SEG_RE.test(t)) return null;
-  for(const [k,kw] of Object.entries(B.seg_perfis||{})) if(t.includes(norm(kw))) return k;
-  return 'outros'; }
-const SEG_ROWS = META.map(m=>({m,p:segProfile(m)})).filter(x=>x.p);
+const SEG_ROWS=DATA.seg||[];
 const segVerba=k=>{ try{ const v=parseFloat(localStorage.getItem('dm_seg_'+k)); return isFinite(v)?v:null; }catch(e){ return null; } };
 function renderSeg(){
-  const sumP=(k,pred)=>SEG_ROWS.filter(x=>(k==null||x.p===k)&&pred(x.m.d)).reduce((s,x)=>s+(x.m.sp||0),0);
+  const sumP=(k,pred)=>SEG_ROWS.filter(x=>(k==null||x.p===k)&&pred(x.d)).reduce((s,x)=>s+(x.sp||0),0);
   const mes=TODAY.slice(0,7);
   const dim=new Date(+TODAY.slice(0,4),+TODAY.slice(5,7),0).getDate();
   const restantes=dim-(+TODAY.slice(8,10))+1;
   const g=k=>sumP(k,dateActive)*taxf();
-  const kg=[{label:'Total gasto',val:brl(g(null)),aux:'Marcelo + Auricelio'+(STATE.tax?' · c/ imposto':'')},
+  const kg=[{label:'Total gasto',val:brl(g(null)),aux:'Marcelo + Auricelio'+(STATE.tax?' · c/ imposto':' · s/ imposto')},
     {label:'Total gasto Marcelo',val:brl(g('marcelo')),aux:'período selecionado'},
     {label:'Total gasto Auricelio',val:brl(g('auricelio')),aux:'período selecionado'}];
   document.getElementById('segKpisGasto').innerHTML=kg.map(kpiCard).join('');
   const kp=SEG_PERFIS.map(([k,nome])=>{
-    const verba=segVerba(k), gm=sumP(k,d=>d&&d.slice(0,7)===mes)*TAX;
+    const verba=segVerba(k), gm=sumP(k,d=>d&&d.slice(0,7)===mes)*taxf();
     const pace=(verba!=null&&restantes>0)?(verba-gm)/restantes:null;
     return {label:'Pace ideal '+nome,val:verba==null?'-':brl(pace),hero:true,
       aux:verba==null?'defina a verba mensal':`verba ${brl(verba)} − gasto ${brl(gm)} ÷ ${restantes} ${restantes>1?'dias':'dia'}`};
   });
   document.getElementById('segKpisPace').innerHTML=kp.map(kpiCard).join('');
-  document.getElementById('segNote').innerHTML='Pace ideal = (verba mensal − gasto do mês com imposto Meta ×'+TAX+') ÷ dias restantes até o fim do mês (hoje incluso). '
-    +(SEG_ROWS.length?'':'<b>Nenhuma campanha de seguidores encontrada na aba Meta Ads</b> (filtro: <code>'+(B.seg_filtro||'')+'</code> no nome da campanha/conjunto/anúncio) — valores zerados.');
+  document.getElementById('segNote').innerHTML='Pace ideal = (verba mensal − gasto do mês'+(STATE.tax?' com imposto Meta ×'+TAX:' sem imposto (toggle desligado)')+') ÷ dias restantes até o fim do mês (hoje incluso). Fonte: campanhas C1 da planilha de Seguidores. '
+    +(SEG_ROWS.length?'':'<b>Nenhuma campanha C1 carregada</b> — valores zerados.');
 }
 SEG_PERFIS.forEach(([k,,id])=>{ const el=document.getElementById(id); if(!el) return;
   const v=segVerba(k); if(v!=null) el.value=v;
