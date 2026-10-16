@@ -57,6 +57,13 @@ META_CAC = None            # meta de CAC (R$/venda); None = não definida
 VOLUME_MIN_AMOSTRAL = SAMPLE_MIN_MQLS  # conversões (MQLs) mínimas p/ amostra confiável
 N_DIAS_CORTE = 5           # dias consecutivos acima do teto p/ considerar corte
 
+# Aba Seguidores (Distribuição). O gasto é lido da aba Meta Ads: uma linha
+# conta como "seguidores" se Campaign/Ad Set/Ad casar com SEG_FILTRO e é
+# atribuída ao perfil cujo nome (SEG_PERFIS) aparecer no texto. Verba mensal
+# de cada perfil é digitada na própria página (localStorage).
+SEG_FILTRO = r"seguidor|follower|\bSEG\b"
+SEG_PERFIS = {"marcelo": "marcelo", "auricelio": "auricelio"}
+
 # --------------------------------------------------------------------------- #
 # Ações Agendadas (lembretes por campanha/conjunto/anúncio)
 # --------------------------------------------------------------------------- #
@@ -322,6 +329,8 @@ def process(leads_rows, meta_rows):
             "meta_cac": META_CAC,
             "volume_min_amostral": VOLUME_MIN_AMOSTRAL,
             "n_dias_corte": N_DIAS_CORTE,
+            "seg_filtro": SEG_FILTRO,
+            "seg_perfis": SEG_PERFIS,
             # Ações Agendadas: credencial de escrita (client-side) + coordenadas
             # do repo, para o dashboard commitar lembretes via GitHub Contents API.
             "gh_owner": GH_OWNER,

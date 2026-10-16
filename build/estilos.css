@@ -16,7 +16,14 @@
   .nav-item{display:flex; align-items:center; gap:10px; padding:10px 20px; color:#c7c9d6; cursor:pointer; border-left:3px solid transparent; font-size:13.5px}
   .nav-item:hover{background:rgba(255,255,255,.06); color:#fff}
   .nav-item.active{background:rgba(59,91,219,.18); color:#fff; border-left-color:var(--accent-blue)}
-  .nav-item .ic{width:16px; text-align:center; opacity:.9}
+  .nav-item .ic{width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; opacity:.9}
+  .nav-svg{width:18px; height:18px; display:block}
+  .nav-item.active .ic{opacity:1}
+  .nav-sep{height:1px; background:rgba(255,255,255,.1); margin:10px 20px 0}
+  .sidebar{overflow-y:auto}
+  .empty-page{display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:50vh; text-align:center; gap:8px}
+  .empty-title{font-size:15px; font-weight:700}
+  .empty-msg{font-size:13px; color:var(--muted); border:1px dashed var(--border); border-radius:12px; padding:12px 22px}
   .sidebar .foot{margin-top:auto; border-top:1px solid rgba(255,255,255,.08); padding:12px 20px; font-size:11px; opacity:.35}
   .ham{display:none}
   #navToggle{display:none}

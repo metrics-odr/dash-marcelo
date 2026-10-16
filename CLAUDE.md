@@ -54,6 +54,16 @@ GUIA-REPLICACAO.md        # como replicar este modelo para outros relatórios
 SETUP-CRON.md             # valores exatos do cron-job.org
 ```
 
+### Sidebar (remodelada) e aba Seguidores
+Seções com ícones SVG de traço único (`currentColor`, 1.75): **BTBExperience** (Visão Geral 🔭 · Meta Ads
+com logo colorido · Report), **Distribuição** (Seguidores 🚀 · Video View · Iscas), **FSE · Empresas
+Parceiras** e **FSE · Sócio Executivo** (Visão Geral + Meta Ads). Video View/Iscas/FSE são placeholders
+"Funil não implementado" (`.empty-page`). `setPage()` é genérico (`PAGE_TITLES`, hash `#<page>`).
+**Seguidores** (`renderSeg` em `app.js`): gasto total/Marcelo/Auricelio (período + toggle de imposto) e
+**Pace ideal** = (verba mensal − gasto do mês ×1,13806) ÷ dias restantes (hoje incluso). Verba mensal é
+digitada na página (`localStorage dm_seg_*`). O gasto vem da aba Meta Ads filtrando campanha/conjunto/anúncio
+por `SEG_FILTRO` e `SEG_PERFIS` em `build.py` — **ajustar à convenção de nomes real das campanhas de seguidores**.
+
 ### Aba Relatório (funil de evento presencial High Ticket)
 Terceira página (sidebar, entre Meta Ads e o rodapé). **Espelha a Visão Geral**
 (mesmo funil/KPIs/gráficos/tabela diária, via `renderGeralCore(REL_IDS)`) e, abaixo,
