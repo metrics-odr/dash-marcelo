@@ -1199,7 +1199,7 @@ function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
    Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
    `p` definido pelo nome da campanha). Gasto registrado SEM imposto: ×TAX só com o toggle ligado.
-   Pace ideal = (verba mensal − gasto do mês [c/ imposto se ligado]) ÷ dias restantes até o
+   Pace ideal = (verba mensal c/ imposto − gasto do mês c/ imposto) ÷ dias restantes ÷ TAX (independe do toggle) até o
    fim do mês (hoje incluso). */
 const SEG_PERFIS=[['marcelo','Marcelo','segVerbaMarcelo'],['auricelio','Auricelio','segVerbaAuricelio']];
 const SEG_ROWS=DATA.seg||[];
@@ -1215,13 +1215,13 @@ function renderSeg(){
     {label:'Total gasto Auricelio',val:brl(g('auricelio')),aux:'período selecionado'}];
   document.getElementById('segKpisGasto').innerHTML=kg.map(kpiCard).join('');
   const kp=SEG_PERFIS.map(([k,nome])=>{
-    const verba=segVerba(k), gm=sumP(k,d=>d&&d.slice(0,7)===mes)*taxf();
-    const pace=(verba!=null&&restantes>0)?(verba-gm)/restantes:null;
+    const verba=segVerba(k), gm=sumP(k,d=>d&&d.slice(0,7)===mes)*TAX; /* sempre c/ imposto (independe do toggle) */
+    const pace=(verba!=null&&restantes>0)?(verba-gm)/restantes/TAX:null; /* ÷TAX = valor pré-imposto a digitar no Meta */
     return {label:'Pace ideal '+nome,val:verba==null?'-':brl(pace),hero:true,
-      aux:verba==null?'defina a verba mensal':`verba ${brl(verba)} − gasto ${brl(gm)} ÷ ${restantes} ${restantes>1?'dias':'dia'}`};
+      aux:verba==null?'defina a verba mensal':`(verba ${brl(verba)} − gasto c/ imp. ${brl(gm)}) ÷ ${restantes} ${restantes>1?'dias':'dia'} ÷ ${TAX} · valor p/ digitar no Meta`};
   });
   document.getElementById('segKpisPace').innerHTML=kp.map(kpiCard).join('');
-  document.getElementById('segNote').innerHTML='Pace ideal = (verba mensal − gasto do mês'+(STATE.tax?' com imposto Meta ×'+TAX:' sem imposto (toggle desligado)')+') ÷ dias restantes até o fim do mês (hoje incluso). Fonte: campanhas C1 da planilha de Seguidores. '
+  document.getElementById('segNote').innerHTML='Pace ideal = (verba mensal COM imposto − gasto do mês com imposto ×'+TAX+') ÷ dias restantes (hoje incluso) ÷ '+TAX+' = orçamento diário SEM imposto a digitar no Meta Ads. Não muda com o toggle de imposto. Fonte: campanhas C1 da planilha de Seguidores. '
     +(SEG_ROWS.length?'':'<b>Nenhuma campanha C1 carregada</b> — valores zerados.');
 }
 SEG_PERFIS.forEach(([k,,id])=>{ const el=document.getElementById(id); if(!el) return;
