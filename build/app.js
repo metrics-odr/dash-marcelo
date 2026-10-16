@@ -1183,17 +1183,50 @@ function ppApply(){
 }
 
 /* ---------------- navigation & boot ---------------- */
-function setPage(p){ STATE.page=p;
+const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'Report',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
+  'fse-emp-geral':'FSE · Empresas Parceiras · Visão Geral','fse-emp-meta':'FSE · Empresas Parceiras · Meta Ads',
+  'fse-soc-geral':'FSE · Sócio Executivo · Visão Geral','fse-soc-meta':'FSE · Sócio Executivo · Meta Ads'};
+function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
-  document.getElementById('page-geral').classList.toggle('active',p==='geral');
-  document.getElementById('page-meta').classList.toggle('active',p==='meta');
-  document.getElementById('page-rel').classList.toggle('active',p==='rel');
-  document.getElementById('ptitle').textContent = p==='meta'?'Captura Meta Ads':(p==='rel'?'Relatório':'Visão Geral de Leads');
+  document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+p));
+  document.getElementById('ptitle').textContent = PAGE_TITLES[p];
   document.getElementById('navToggle').checked=false;
-  history.replaceState(null,'', p==='meta'?'#meta':(p==='rel'?'#rel':'#geral'));
+  history.replaceState(null,'','#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='geral') renderGeral(); }
+
+/* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
+   Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
+   `p` definido pelo nome da campanha). Gasto registrado SEM imposto: ×TAX só com o toggle ligado.
+   Pace ideal = (verba mensal − gasto do mês [c/ imposto se ligado]) ÷ dias restantes até o
+   fim do mês (hoje incluso). */
+const SEG_PERFIS=[['marcelo','Marcelo','segVerbaMarcelo'],['auricelio','Auricelio','segVerbaAuricelio']];
+const SEG_ROWS=DATA.seg||[];
+const segVerba=k=>{ try{ const v=parseFloat(localStorage.getItem('dm_seg_'+k)); return isFinite(v)?v:null; }catch(e){ return null; } };
+function renderSeg(){
+  const sumP=(k,pred)=>SEG_ROWS.filter(x=>(k==null||x.p===k)&&pred(x.d)).reduce((s,x)=>s+(x.sp||0),0);
+  const mes=TODAY.slice(0,7);
+  const dim=new Date(+TODAY.slice(0,4),+TODAY.slice(5,7),0).getDate();
+  const restantes=dim-(+TODAY.slice(8,10))+1;
+  const g=k=>sumP(k,dateActive)*taxf();
+  const kg=[{label:'Total gasto',val:brl(g(null)),aux:'Marcelo + Auricelio'+(STATE.tax?' · c/ imposto':' · s/ imposto')},
+    {label:'Total gasto Marcelo',val:brl(g('marcelo')),aux:'período selecionado'},
+    {label:'Total gasto Auricelio',val:brl(g('auricelio')),aux:'período selecionado'}];
+  document.getElementById('segKpisGasto').innerHTML=kg.map(kpiCard).join('');
+  const kp=SEG_PERFIS.map(([k,nome])=>{
+    const verba=segVerba(k), gm=sumP(k,d=>d&&d.slice(0,7)===mes)*taxf();
+    const pace=(verba!=null&&restantes>0)?(verba-gm)/restantes:null;
+    return {label:'Pace ideal '+nome,val:verba==null?'-':brl(pace),hero:true,
+      aux:verba==null?'defina a verba mensal':`verba ${brl(verba)} − gasto ${brl(gm)} ÷ ${restantes} ${restantes>1?'dias':'dia'}`};
+  });
+  document.getElementById('segKpisPace').innerHTML=kp.map(kpiCard).join('');
+  document.getElementById('segNote').innerHTML='Pace ideal = (verba mensal − gasto do mês'+(STATE.tax?' com imposto Meta ×'+TAX:' sem imposto (toggle desligado)')+') ÷ dias restantes até o fim do mês (hoje incluso). Fonte: campanhas C1 da planilha de Seguidores. '
+    +(SEG_ROWS.length?'':'<b>Nenhuma campanha C1 carregada</b> — valores zerados.');
+}
+SEG_PERFIS.forEach(([k,,id])=>{ const el=document.getElementById(id); if(!el) return;
+  const v=segVerba(k); if(v!=null) el.value=v;
+  el.addEventListener('input',()=>{ try{ el.value===''?localStorage.removeItem('dm_seg_'+k):localStorage.setItem('dm_seg_'+k,el.value); }catch(e){} if(STATE.page==='seg') renderSeg(); }); });
 
 function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
 applyTheme();
@@ -1238,7 +1271,7 @@ document.getElementById('buildFoot').textContent='build __BUILD_ID__';
 document.getElementById('buildFoot2').textContent='· build __BUILD_ID__';
 
 syncDateInputs();
-setPage(location.hash==='#meta'?'meta':(location.hash==='#rel'?'rel':'geral'));
+setPage(location.hash.slice(1)||'geral');
 
 /* auto-refresh com cache-bust ~30 min */
 setTimeout(()=>{ location.href=location.pathname+'?t='+Date.now()+location.hash; }, 30*60*1000);

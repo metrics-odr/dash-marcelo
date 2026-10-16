@@ -57,6 +57,15 @@ META_CAC = None            # meta de CAC (R$/venda); None = não definida
 VOLUME_MIN_AMOSTRAL = SAMPLE_MIN_MQLS  # conversões (MQLs) mínimas p/ amostra confiável
 N_DIAS_CORTE = 5           # dias consecutivos acima do teto p/ considerar corte
 
+# Aba Seguidores (Distribuição): lê a aba Meta Ads de OUTRA planilha
+# (campanhas C1). O valor registrado NÃO inclui imposto — o front aplica
+# ×TAX_FACTOR só quando o toggle de imposto da topbar está ligado.
+# Linha conta se a campanha casar com SEG_FILTRO; o perfil sai do nome da campanha.
+SEG_SPREADSHEET_ID = "18vUk0oGseTAbOPknYtRSB0hW3_s0S2Fyga7K2iXv6Bo"
+SEG_GID = "1245628405"
+SEG_FILTRO = r"(?<![a-z0-9])c1(?![a-z0-9])"
+SEG_PERFIS = {"marcelo": "marcelo", "auricelio": "auricelio"}
+
 # --------------------------------------------------------------------------- #
 # Ações Agendadas (lembretes por campanha/conjunto/anúncio)
 # --------------------------------------------------------------------------- #
@@ -396,10 +405,31 @@ def render(data, template_path):
     return tpl
 
 
+def process_seg(rows):
+    """Linhas de gasto das campanhas C1 -> [{d, camp, p, sp}] (p = perfil)."""
+    if not rows:
+        return []
+    idx = header_index(rows[0], {"day": ["day", "data"], "campaign": ["campaign name", "campaign"],
+                                 "spent": ["amount spent", "valor gasto", "gasto"]},
+                       {"day": 0, "campaign": 1, "spent": 4})
+    rx = re.compile(SEG_FILTRO, re.I)
+    out = []
+    for row in rows[1:]:
+        camp = cell(row, idx["campaign"])
+        n = strip_accents(camp).lower()
+        if not rx.search(n):
+            continue
+        prof = next((k for k, kw in SEG_PERFIS.items() if kw in n), "outros")
+        out.append({"d": parse_date(cell(row, idx["day"])), "camp": camp, "p": prof,
+                    "sp": round(to_float(cell(row, idx["spent"])), 4)})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--leads-file")
     ap.add_argument("--meta-file")
+    ap.add_argument("--seg-file")
     ap.add_argument("--template", default="build/template.html")
     ap.add_argument("--out", default="dist/index.html")
     args = ap.parse_args()
@@ -407,6 +437,11 @@ def main():
     leads_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_LEADS), args.leads_file)
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
     data = process(leads_rows, meta_rows)
+    try:
+        data["seg"] = process_seg(load_rows(EXPORT_URL.format(sid=SEG_SPREADSHEET_ID, gid=SEG_GID), args.seg_file))
+    except Exception as e:  # a aba Seguidores não pode derrubar o build das demais
+        print(f"AVISO: planilha de Seguidores indisponível ({e}); aba ficará zerada", file=sys.stderr)
+        data["seg"] = []
 
     # Briefings do Gestor (texto por IA, gerado 1x/dia) — lidos do arquivo
     # versionado ao lado do template. Sem chamada de API no build.
