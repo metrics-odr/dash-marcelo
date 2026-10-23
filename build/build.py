@@ -31,6 +31,10 @@ from datetime import datetime, timezone, timedelta
 SPREADSHEET_ID = "1_lj4IlJyylkC1MyW12ujCR7lpg90VOqzIbxO1XSvxXQ"
 GID_LEADS = "2135966057"
 GID_META = "1245628405"
+# Segunda fonte de leads (formulario do BTB Summit) — outra planilha, somada a
+# primeira. Mesmo destino (leads[]), colunas diferentes (ver process_leads_v2).
+SPREADSHEET_ID_V2 = "1Ug3XfUsWPBmKWEJHyctIIDSLPC3gWVT6ZvtUkSiNDuM"
+GID_LEADS_V2 = "0"
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 
 BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
@@ -136,6 +140,9 @@ def parse_date(v: str) -> str | None:
     m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
     if m:
         return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})[,\s]", s)   # "19/10/2026, 13:21:38"
+    if m:
+        s = f"{m.group(1)}/{m.group(2)}/{m.group(3)}"
     for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d/%m/%y", "%b %d, %Y", "%Y/%m/%d"):
         try:
             return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
@@ -166,6 +173,22 @@ def is_qualified(bucket: str | None) -> bool:
     if any(k in s for k in ("mais", "acima", "superior", "maior")):
         return max(nums) >= 30
     return max(nums) >= 30
+
+
+def is_qualified_v2(bucket: str | None) -> bool:
+    """Formulario v2: faixas fechadas "Até X mil" / "Mais de X mil". Faixas
+    (5, 10, 20, 40, 80 mil): "Até 40 mil" = 20–40 mil conta como MQL (topo da
+    faixa >= 30k); "Até 20 mil" e abaixo nao. Ajuste V2_MQL_MIN_TOP se mudar."""
+    s = norm(bucket)
+    nums = [int(n) for n in _NUM_RE.findall(s)]
+    if not nums:
+        return False
+    if "mais" in s or "acima" in s:
+        return True
+    return max(nums) >= V2_MQL_MIN_TOP
+
+
+V2_MQL_MIN_TOP = 40   # topo minimo (mil) da faixa "Até X mil" que qualifica
 
 
 def pretty_bucket(bucket: str) -> str:
@@ -225,10 +248,60 @@ def cell(row, i):
     return (row[i] or "").strip()
 
 
+def process_leads_v2(rows):
+    """Planilha do formulario BTB Summit -> mesmos registros de leads[].
+    utm_campaign=campanha, utm_medium=conjunto, utm_content=anuncio (mesmo
+    mapeamento do Meta). Sem utm_source => organico/sem rastreio."""
+    if not rows:
+        return []
+    idx = header_index(
+        rows[0],
+        {"created": ["data"], "name": ["nome"], "email": ["email"], "phone": ["tel", "telefone"],
+         "profession": ["perfil"], "faturamento": ["faturamento"], "source": ["utm_source"],
+         "adset_name": ["utm_medium"], "campaign": ["utm_campaign"], "term": ["utm_term"],
+         "ad_name": ["utm_content"]},
+        {"created": 0, "name": 1, "email": 2, "phone": 3, "profession": 5, "faturamento": 8,
+         "source": 14, "adset_name": 15, "campaign": 16, "term": 17, "ad_name": 18},
+    )
+    out = []
+    for row in rows[1:]:
+        if not any((c or "").strip() for c in row):
+            continue
+        if is_test_lead(" ".join(str(c) for c in row)):
+            continue
+        source = norm(cell(row, idx["source"]))
+        campaign = cell(row, idx["campaign"])
+        term = norm(cell(row, idx["term"]))
+        plat = term.split("_")[0] if term else ""
+        if "goog" in source or "youtube" in source or norm(campaign).startswith("goog"):
+            src = "google"
+        elif any(k in source for k in ("meta", "facebook", "instagram", "fb", "ig")) or campaign:
+            src = "meta"
+        else:
+            src = "org"
+        fat = cell(row, idx["faturamento"])
+        out.append({
+            "d": parse_date(cell(row, idx["created"])),
+            "src": src,
+            "plat": plat or "—",
+            "camp": campaign or "(sem campanha)",
+            "adset": cell(row, idx["adset_name"]) or "(sem conjunto)",
+            "ad": cell(row, idx["ad_name"]) or "(sem anúncio)",
+            "prof": (cell(row, idx["profession"]) or "Sem resposta").strip(),
+            "bucket": (fat or "Sem resposta").strip().capitalize(),
+            "q": 1 if is_qualified_v2(fat) else 0,
+            "utm": 1 if valid_utm(campaign) else 0,
+            "nm": first_last_initial(cell(row, idx["name"])),
+            "em": mask_email(cell(row, idx["email"])),
+            "ph": mask_phone(cell(row, idx["phone"])),
+        })
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
-def process(leads_rows, meta_rows):
+def process(leads_rows, meta_rows, leads_v2_rows=None):
     lheader = leads_rows[0] if leads_rows else []
     lidx = header_index(
         lheader,
@@ -274,6 +347,8 @@ def process(leads_rows, meta_rows):
             "em": mask_email(cell(row, lidx["email"])),
             "ph": mask_phone(cell(row, lidx["phone"])),
         })
+
+    leads.extend(process_leads_v2(leads_v2_rows))
 
     mheader = meta_rows[0] if meta_rows else []
     midx = header_index(
@@ -429,6 +504,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--leads-file")
     ap.add_argument("--meta-file")
+    ap.add_argument("--leads2-file")
     ap.add_argument("--seg-file")
     ap.add_argument("--template", default="build/template.html")
     ap.add_argument("--out", default="dist/index.html")
@@ -436,7 +512,12 @@ def main():
 
     leads_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_LEADS), args.leads_file)
     meta_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID, gid=GID_META), args.meta_file)
-    data = process(leads_rows, meta_rows)
+    try:
+        leads2_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID_V2, gid=GID_LEADS_V2), args.leads2_file)
+    except Exception as e:  # a 2a fonte nao pode derrubar o build da 1a
+        print(f"AVISO: planilha de Leads v2 indisponível ({e}); seguindo só com a 1a fonte", file=sys.stderr)
+        leads2_rows = []
+    data = process(leads_rows, meta_rows, leads2_rows)
     try:
         data["seg"] = process_seg(load_rows(EXPORT_URL.format(sid=SEG_SPREADSHEET_ID, gid=SEG_GID), args.seg_file))
     except Exception as e:  # a aba Seguidores não pode derrubar o build das demais

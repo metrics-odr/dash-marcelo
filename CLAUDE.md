@@ -25,6 +25,14 @@ Spreadsheet ID: `1_lj4IlJyylkC1MyW12ujCR7lpg90VOqzIbxO1XSvxXQ` (público — lei
 
 URL de export CSV: `https://docs.google.com/spreadsheets/d/<ID>/export?format=csv&gid=<GID>`
 
+### 2ª fonte de Leads — formulário BTB Summit (somada à 1ª)
+Planilha `1Ug3XfUsWPBmKWEJHyctIIDSLPC3gWVT6ZvtUkSiNDuM` (gid `0`). As DUAS fontes rodam juntas: `process()` concatena
+`process_leads_v2()` em `leads[]` (sem remover/unificar a aba Leads original). Colunas: data · nome · email · tel · perfil
+(=profissão) · faturamento · utm_source · utm_medium (=conjunto) · utm_campaign (=campanha) · utm_term (plataforma) ·
+utm_content (=anúncio). Sem utm → origem `org`. Faturamento em faixas fechadas ("Até 5/10/20/40/80 mil", "Mais de 80 mil"):
+MQL se "Até 40 mil" ou mais (`V2_MQL_MIN_TOP`, `is_qualified_v2`). Falha ao ler a planilha não derruba o build.
+`--leads2-file` p/ teste local. A planilha precisa estar pública (leitura via export CSV).
+
 ### Regra de Lead Qualificado (MQL)
 Faturamento médio mensal **≥ 30 mil** (coluna **N** da aba Leads). Faixas que
 qualificam: `entre_30_e_50_mil`, `entre_50_e_100_mil`, `mais_de_100_mil`.
