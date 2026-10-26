@@ -1183,7 +1183,7 @@ function ppApply(){
 }
 
 /* ---------------- navigation & boot ---------------- */
-const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'Report',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
+const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'BTB - Report',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
   'fse-emp-geral':'FSE · Empresas Parceiras · Visão Geral','fse-emp-meta':'FSE · Empresas Parceiras · Meta Ads',
   'fse-soc-geral':'FSE · Sócio Executivo · Visão Geral','fse-soc-meta':'FSE · Sócio Executivo · Meta Ads'};
 function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
