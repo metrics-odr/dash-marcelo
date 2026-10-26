@@ -275,7 +275,7 @@ def process_leads_v2(rows):
         plat = term.split("_")[0] if term else ""
         if "goog" in source or "youtube" in source or norm(campaign).startswith("goog"):
             src = "google"
-        elif any(k in source for k in ("meta", "facebook", "instagram", "fb", "ig")) or campaign:
+        elif any(k in source for k in ("meta", "facebook", "instagram")) or source in ("fb", "ig"):
             src = "meta"
         else:
             src = "org"
