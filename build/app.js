@@ -984,7 +984,7 @@ function dailyCells(x,d,isTotal){
 /* Mar04: considera TODOS os leads e TODO o gasto de todas as fontes de tráfego
    (sem filtrar por atribuição). Hoje só há Meta; quando vier google/tiktok/orgânico
    etc., já entram automaticamente. */
-function metaScope(ex){ let fL=leadsActive(), fM=metaActive();
+function metaScope(ex){ let fL=leadsActive().filter(r=>r.src==='meta'), fM=metaActive();
   if(ex!=='C'&&STATE.mSelC.size){ fL=fL.filter(r=>STATE.mSelC.has(r.camp)); fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
   if(ex!=='A'&&STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
   if(ex!=='D'&&STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
