@@ -33,6 +33,15 @@ utm_content (=anúncio). Sem utm → origem `org`. Faturamento em faixas fechada
 MQL se "Até 40 mil" ou mais (`V2_MQL_MIN_TOP`, `is_qualified_v2`). Falha ao ler a planilha não derruba o build.
 `--leads2-file` p/ teste local. A planilha precisa estar pública (leitura via export CSV).
 
+### 3ª fonte de Leads — aba "Lead Form Nativo" (+ deduplicação das 3 bases)
+Mesma planilha do BTB Summit (`1Ug3Xf…`), aba **Lead Form Nativo** (gid `597977004`): export do formulário nativo do Meta,
+layout da aba Leads original **+ pergunta do @ do Instagram** (desloca nome/email/telefone — colunas achadas por cabeçalho em
+`process_leads_v1(native=True)`). MQL pela regra ≥ 30 mil (`is_qualified`, faixas `entre_30_e_50_mil`…). `--leads-native-file` p/ teste.
+`process()` junta as 3 bases (Leads · Nativo · BTB Summit) e roda `dedup_leads()`: mesma pessoa = **mesmo e-mail** OU **mesmo
+telefone + mesmo 1º nome** (telefone sozinho não une — casais/sócios dividem número). Fica 1 registro: o mais antigo com origem
+Meta rastreada (cruza com o gasto), senão o mais antigo; se outro duplicado for MQL, o escolhido herda faixa/profissão/MQL.
+`gerar_relatorios.py` usa as mesmas 3 bases. Falha em qualquer fonte extra não derruba o build.
+
 ### Regra de Lead Qualificado (MQL)
 Faturamento médio mensal **≥ 30 mil** (coluna **N** da aba Leads). Faixas que
 qualificam: `entre_30_e_50_mil`, `entre_50_e_100_mil`, `mais_de_100_mil`.
