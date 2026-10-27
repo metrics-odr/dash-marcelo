@@ -477,6 +477,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--leads-file")
     ap.add_argument("--meta-file")
+    ap.add_argument("--leads2-file")
+    ap.add_argument("--leads-native-file")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                     "relatorios_metrics.json"))
     args = ap.parse_args()
@@ -486,7 +488,16 @@ def main():
     # alcança docs.google.com (o sandbox do agente não alcança).
     leads_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_LEADS), args.leads_file)
     meta_rows = build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID, gid=build.GID_META), args.meta_file)
-    data = build.process(leads_rows, meta_rows)
+    # Mesmas 3 bases de leads do build.py (Leads + BTB Summit + Lead Form Nativo);
+    # falha numa fonte extra não derruba as demais.
+    extra = []
+    for gid, local in ((build.GID_LEADS_V2, args.leads2_file), (build.GID_LEADS_NATIVO, args.leads_native_file)):
+        try:
+            extra.append(build.load_rows(build.EXPORT_URL.format(sid=build.SPREADSHEET_ID_V2, gid=gid), local))
+        except Exception as e:
+            print(f"AVISO: fonte de leads gid={gid} indisponível ({e})", file=sys.stderr)
+            extra.append([])
+    data = build.process(leads_rows, meta_rows, extra[0], extra[1])
     leads, meta, B = data["leads"], data["meta"], data["build"]
     tax = B["tax_factor"]
 

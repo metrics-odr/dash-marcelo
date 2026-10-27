@@ -35,6 +35,10 @@ GID_META = "1245628405"
 # primeira. Mesmo destino (leads[]), colunas diferentes (ver process_leads_v2).
 SPREADSHEET_ID_V2 = "1Ug3XfUsWPBmKWEJHyctIIDSLPC3gWVT6ZvtUkSiNDuM"
 GID_LEADS_V2 = "0"
+# 3a fonte: aba "Lead Form Nativo" da MESMA planilha do BTB Summit (export do
+# formulario nativo do Meta, mesmo layout da aba Leads original + 1 pergunta a
+# mais: @ do Instagram, o que desloca as colunas de nome/email/telefone).
+GID_LEADS_NATIVO = "597977004"
 EXPORT_URL = "https://docs.google.com/spreadsheets/d/{sid}/export?format=csv&gid={gid}"
 
 BRT = timezone(timedelta(hours=-3))   # horario de Brasilia (exibicao)
@@ -294,15 +298,21 @@ def process_leads_v2(rows):
             "nm": first_last_initial(cell(row, idx["name"])),
             "em": mask_email(cell(row, idx["email"])),
             "ph": mask_phone(cell(row, idx["phone"])),
+            "_em": cell(row, idx["email"]), "_ph": cell(row, idx["phone"]), "_nm": cell(row, idx["name"]),
         })
     return out
 
 
-# --------------------------------------------------------------------------- #
-# Processamento -> registros brutos
-# --------------------------------------------------------------------------- #
-def process(leads_rows, meta_rows, leads_v2_rows=None):
+def process_leads_v1(leads_rows, native=False):
+    """Aba Leads (export do Lead Form do Meta) -> registros de leads[]. Serve a
+    aba Leads original e a aba "Lead Form Nativo" (que tem a pergunta extra do
+    @ do Instagram — as colunas são localizadas pelo cabeçalho, não pela posição)."""
     lheader = leads_rows[0] if leads_rows else []
+    fallback = {"created": 1, "ad_name": 3, "adset_name": 5, "campaign": 7, "is_organic": 10, "platform": 11,
+                "profession": 12, "faturamento": 13, "name": 14, "email": 15, "phone": 16}
+    if native:   # sem a coluna "id" e com @ do Instagram antes do nome
+        fallback = {"created": 0, "ad_name": 2, "adset_name": 4, "campaign": 6, "is_organic": 9, "platform": 10,
+                    "profession": 11, "faturamento": 12, "name": 14, "email": 15, "phone": 16}
     lidx = header_index(
         lheader,
         {"created": ["created_time", "data", "created"], "ad_name": ["ad_name"],
@@ -310,8 +320,7 @@ def process(leads_rows, meta_rows, leads_v2_rows=None):
          "platform": ["platform"], "profession": ["qual_sua_profissao", "profiss"],
          "faturamento": ["qual_seu_faturamento", "faturamento"], "name": ["full_name", "nome"],
          "email": ["email"], "phone": ["phone_number", "phone", "telefone"]},
-        {"created": 1, "ad_name": 3, "adset_name": 5, "campaign": 7, "is_organic": 10, "platform": 11,
-         "profession": 12, "faturamento": 13, "name": 14, "email": 15, "phone": 16},
+        fallback,
     )
 
     leads = []
@@ -346,9 +355,99 @@ def process(leads_rows, meta_rows, leads_v2_rows=None):
             "nm": first_last_initial(cell(row, lidx["name"])),
             "em": mask_email(cell(row, lidx["email"])),
             "ph": mask_phone(cell(row, lidx["phone"])),
+            "_em": cell(row, lidx["email"]), "_ph": cell(row, lidx["phone"]), "_nm": cell(row, lidx["name"]),
         })
 
+    return leads
+
+
+# --------------------------------------------------------------------------- #
+# Deduplicação entre as 3 bases de leads
+# --------------------------------------------------------------------------- #
+def _email_key(e: str) -> str:
+    e = (e or "").strip().lower()
+    return e if "@" in e else ""
+
+
+def _phone_key(p: str) -> str:
+    d = re.sub(r"\D", "", p or "")
+    if len(d) > 11 and d.startswith("55"):
+        d = d[2:]
+    return d[-11:] if len(d) >= 10 else ""
+
+
+def _first_name_key(n: str) -> str:
+    parts = norm(n).split()
+    return parts[0] if parts else ""
+
+
+def dedup_leads(leads):
+    """Uma pessoa = um lead, mesmo que apareça em mais de uma base (Leads, Lead
+    Form Nativo, formulário BTB Summit) ou preencha duas vezes.
+    Mesma pessoa = mesmo e-mail, OU mesmo telefone + mesmo primeiro nome (telefone
+    sozinho não basta: marido/esposa/sócios dividem número). Do grupo fica 1
+    registro: o 1o (mais antigo) com origem Meta rastreada — é o que cruza com o
+    gasto do Meta — senão o mais antigo. Se algum duplicado for MQL e o escolhido
+    não, herda faixa/profissão/MQL dele (a resposta qualificada não se perde)."""
+    n = len(leads)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+
+    by_email, by_phone = {}, {}
+    for i, l in enumerate(leads):
+        ek = _email_key(l.get("_em"))
+        if ek:
+            union(i, by_email.setdefault(ek, i))
+        pk, fk = _phone_key(l.get("_ph")), _first_name_key(l.get("_nm"))
+        if pk and fk:
+            union(i, by_phone.setdefault((pk, fk), i))
+
+    groups = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+
+    def order(i):
+        return (leads[i]["d"] or "9999-99-99", i)
+
+    out = []
+    for idxs in groups.values():
+        idxs.sort(key=order)
+        meta_rows = [i for i in idxs if leads[i]["src"] == "meta" and leads[i]["utm"]]
+        win = dict(leads[(meta_rows or idxs)[0]])
+        if not win["q"]:
+            qual = next((i for i in idxs if leads[i]["q"]), None)
+            if qual is not None:
+                win.update(q=1, bucket=leads[qual]["bucket"], prof=leads[qual]["prof"])
+        out.append((order(min(idxs, key=order)), win))
+    out.sort(key=lambda t: t[0])
+    res = []
+    for _, l in out:
+        for k in ("_em", "_ph", "_nm"):
+            l.pop(k, None)
+        res.append(l)
+    return res
+
+
+# --------------------------------------------------------------------------- #
+# Processamento -> registros brutos
+# --------------------------------------------------------------------------- #
+def process(leads_rows, meta_rows, leads_v2_rows=None, leads_native_rows=None):
+    leads = process_leads_v1(leads_rows)
+    # Native Lead Form (3a base): mesmo layout/regra de MQL da aba Leads (faixas
+    # "entre_30_e_50_mil"...), colunas achadas por cabeçalho.
+    leads.extend(process_leads_v1(leads_native_rows or [], native=True))
     leads.extend(process_leads_v2(leads_v2_rows))
+    leads = dedup_leads(leads)
 
     mheader = meta_rows[0] if meta_rows else []
     midx = header_index(
@@ -505,6 +604,7 @@ def main():
     ap.add_argument("--leads-file")
     ap.add_argument("--meta-file")
     ap.add_argument("--leads2-file")
+    ap.add_argument("--leads-native-file")
     ap.add_argument("--seg-file")
     ap.add_argument("--template", default="build/template.html")
     ap.add_argument("--out", default="dist/index.html")
@@ -517,7 +617,12 @@ def main():
     except Exception as e:  # a 2a fonte nao pode derrubar o build da 1a
         print(f"AVISO: planilha de Leads v2 indisponível ({e}); seguindo só com a 1a fonte", file=sys.stderr)
         leads2_rows = []
-    data = process(leads_rows, meta_rows, leads2_rows)
+    try:
+        native_rows = load_rows(EXPORT_URL.format(sid=SPREADSHEET_ID_V2, gid=GID_LEADS_NATIVO), args.leads_native_file)
+    except Exception as e:
+        print(f"AVISO: aba Lead Form Nativo indisponível ({e}); seguindo sem ela", file=sys.stderr)
+        native_rows = []
+    data = process(leads_rows, meta_rows, leads2_rows, native_rows)
     try:
         data["seg"] = process_seg(load_rows(EXPORT_URL.format(sid=SEG_SPREADSHEET_ID, gid=SEG_GID), args.seg_file))
     except Exception as e:  # a aba Seguidores não pode derrubar o build das demais
