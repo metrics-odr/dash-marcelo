@@ -394,7 +394,12 @@ function kpiCard(k){ return `<div class="kpi ${k.hero?'hero':''}"><div class="kl
    MESMO corpo (renderGeralCore), só mudam os alvos no DOM. */
 const GERAL_IDS={funnel:'geralFunnel',kpis2:'geralKpis2',combo:'gCombo',source:'gSource',bucket:'gBucket',plat:'gPlat',prof:'gProf',daily:'gDaily'};
 const REL_IDS  ={funnel:'relFunnel', kpis2:'relKpis2', combo:'rCombo',source:'rSource',bucket:'rBucket',plat:'rPlat',prof:'rProf',daily:'rDaily'};
-function renderGeral(){ renderGeralCore(GERAL_IDS); }
+function renderGeral(){
+  renderGeralCore(GERAL_IDS);
+  const all=leadsActive().slice().sort((a,b)=>(a.d<b.d?1:-1));
+  const c=document.getElementById('allCountGeral'); if(c) c.textContent=all.length+' leads';
+  renderTable({id:'tAllGeral', cols:leadListCols(true), rows:leadListRows(all,'ag')});
+}
 function renderGeralCore(ids){
   const fL=leadsActive(), fM=metaActive();
   const t=totals(fL,fM), dv=derive(t), g=dv.gasto;
@@ -1088,10 +1093,27 @@ function renderMeta(){
   // qualified leads
   const q=fL.filter(l=>l.q).sort((a,b)=>(a.d<b.d?1:-1));
   document.getElementById('qCount').textContent=q.length+' leads';
-  renderTable({id:'tQual',
-    cols:[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'},{key:'prof',label:'Profissão',type:'dim'},
-      {key:'bucket',label:'Faixa',type:'dim'},{key:'camp',label:'Campanha',type:'dim',big:true},{key:'em',label:'E‑mail',type:'dim',w:200},{key:'ph',label:'Telefone',type:'dim',w:110}],
-    rows:q.map((l,i)=>({k:'q'+i, cells:{d:l.d,nm:l.nm,prof:l.prof,bucket:l.bucket,camp:l.camp,em:l.em,ph:l.ph}}))});
+  renderTable({id:'tQual', cols:leadListCols(false), rows:leadListRows(q,'q')});
+  // todos os leads cadastrados (todas as origens; respeita só o período)
+  const allM=leadsActive().slice().sort((a,b)=>(a.d<b.d?1:-1));
+  const cm=document.getElementById('allCountMeta'); if(cm) cm.textContent=allM.length+' leads';
+  renderTable({id:'tAllMeta', cols:leadListCols(true), rows:leadListRows(allM,'am')});
+}
+
+/* lista de leads (Qualificados / Todos): inclui o anúncio de origem; "full" soma Origem e MQL */
+const SRC_NAME={meta:'Meta Ads',google:'Google',org:'Orgânico',outros:'Outros'};
+function leadListCols(full){
+  const c=[{key:'d',label:'Data',type:'date'},{key:'nm',label:'Nome',type:'dim'}];
+  if(full) c.push({key:'src',label:'Origem',type:'dim',w:90});
+  c.push({key:'prof',label:'Profissão',type:'dim'},{key:'bucket',label:'Faixa',type:'dim'});
+  if(full) c.push({key:'mql',label:'Status',type:'html',w:100});
+  c.push({key:'ad',label:'Anúncio',type:'dim',big:true},{key:'camp',label:'Campanha',type:'dim',big:true},
+    {key:'em',label:'E‑mail',type:'dim',w:200},{key:'ph',label:'Telefone',type:'dim',w:110});
+  return c;
+}
+function leadListRows(list,pfx){
+  return list.map((l,i)=>({k:pfx+i, cells:{d:l.d,nm:l.nm,src:SRC_NAME[l.src]||l.src,prof:l.prof,bucket:l.bucket,mql:l.q?'<span class="pill q">Qualificado</span>':'—',
+    ad:l.ad,camp:l.camp,em:l.em,ph:l.ph}}));
 }
 
 /* ---------------- date presets ---------------- */
