@@ -37,8 +37,8 @@ MQL se "Até 40 mil" ou mais (`V2_MQL_MIN_TOP`, `is_qualified_v2`). Falha ao ler
 Mesma planilha do BTB Summit (`1Ug3Xf…`), aba **Lead Form Nativo** (gid `597977004`): export do formulário nativo do Meta,
 layout da aba Leads original **+ pergunta do @ do Instagram** (desloca nome/email/telefone — colunas achadas por cabeçalho em
 `process_leads_v1(native=True)`). MQL pela regra ≥ 30 mil (`is_qualified`, faixas `entre_30_e_50_mil`…). `--leads-native-file` p/ teste.
-`process()` junta as 3 bases (Leads · Nativo · BTB Summit) e roda `dedup_leads()`: mesma pessoa = **mesmo e-mail** OU **mesmo
-telefone + mesmo 1º nome** (telefone sozinho não une — casais/sócios dividem número). Fica 1 registro: o mais antigo com origem
+`process()` junta as 3 bases (Leads · Nativo · BTB Summit) e roda `dedup_leads()`: duplicata = **mesmo e-mail na MESMA
+campanha** (regra do cliente). Mesmo e-mail em campanhas diferentes conta 1 lead em cada; sem e-mail nunca une. Fica 1 registro: o mais antigo com origem
 Meta rastreada (cruza com o gasto), senão o mais antigo; se outro duplicado for MQL, o escolhido herda faixa/profissão/MQL.
 `gerar_relatorios.py` usa as mesmas 3 bases. Falha em qualquer fonte extra não derruba o build.
 
