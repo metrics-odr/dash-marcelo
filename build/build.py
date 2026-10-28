@@ -369,26 +369,13 @@ def _email_key(e: str) -> str:
     return e if "@" in e else ""
 
 
-def _phone_key(p: str) -> str:
-    d = re.sub(r"\D", "", p or "")
-    if len(d) > 11 and d.startswith("55"):
-        d = d[2:]
-    return d[-11:] if len(d) >= 10 else ""
-
-
-def _first_name_key(n: str) -> str:
-    parts = norm(n).split()
-    return parts[0] if parts else ""
-
-
 def dedup_leads(leads):
-    """Uma pessoa = um lead, mesmo que apareça em mais de uma base (Leads, Lead
-    Form Nativo, formulário BTB Summit) ou preencha duas vezes.
-    Mesma pessoa = mesmo e-mail, OU mesmo telefone + mesmo primeiro nome (telefone
-    sozinho não basta: marido/esposa/sócios dividem número). Do grupo fica 1
-    registro: o 1o (mais antigo) com origem Meta rastreada — é o que cruza com o
-    gasto do Meta — senão o mais antigo. Se algum duplicado for MQL e o escolhido
-    não, herda faixa/profissão/MQL dele (a resposta qualificada não se perde)."""
+    """Duplicata = mesmo e-mail na MESMA campanha (em qualquer das 3 bases: Leads,
+    Lead Form Nativo, formulário BTB Summit). O mesmo e-mail em campanhas
+    diferentes conta 1 lead em cada campanha. Lead sem e-mail nunca é unido.
+    Do grupo fica 1 registro: o 1o (mais antigo) com origem Meta rastreada — é o
+    que cruza com o gasto do Meta — senão o mais antigo. Se algum duplicado for
+    MQL e o escolhido não, herda faixa/profissão/MQL dele."""
     n = len(leads)
     parent = list(range(n))
 
@@ -403,14 +390,11 @@ def dedup_leads(leads):
         if ra != rb:
             parent[max(ra, rb)] = min(ra, rb)
 
-    by_email, by_phone = {}, {}
+    by_key = {}
     for i, l in enumerate(leads):
         ek = _email_key(l.get("_em"))
         if ek:
-            union(i, by_email.setdefault(ek, i))
-        pk, fk = _phone_key(l.get("_ph")), _first_name_key(l.get("_nm"))
-        if pk and fk:
-            union(i, by_phone.setdefault((pk, fk), i))
+            union(i, by_key.setdefault((ek, norm(l.get("camp"))), i))
 
     groups = {}
     for i in range(n):
