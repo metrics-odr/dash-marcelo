@@ -282,6 +282,40 @@ function comboChart(id, d){
         y1:{position:'right',ticks:{color:mut,font:{size:10}},grid:{display:false},beginAtZero:true,title:{display:true,text:'R$',color:mut,font:{size:10}}}}}
   });
 }
+/* Indicadores por dia: linhas com eixo esquerdo (R$ opcional) e direito (%). series:[{label,data,color,axis:'y'|'y1',fmt}] */
+function indLine(id, d, series, yTitle, y1Title){
+  destroy(id); const el=document.getElementById(id); if(!el) return;
+  const labels=d.map(x=>x.d.slice(5)), mut=cmuted();
+  const two=series.some(s=>s.axis==='y1');
+  charts[id]=new Chart(el,{type:'line',
+    data:{labels,datasets:series.map(s=>({label:s.label,data:s.data,borderColor:s.color,backgroundColor:s.color,yAxisID:s.axis,borderWidth:2,pointRadius:2,spanGaps:true,tension:.25}))},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:cink(),boxWidth:10,usePointStyle:true,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>{const f=series[c.datasetIndex].fmt; return c.dataset.label+': '+(c.raw==null?'-':f(c.raw));}}}},
+      scales:Object.assign({x:{ticks:{color:mut,font:{size:10}},grid:{display:false}},
+        y:{position:'left',ticks:{color:mut,font:{size:10},callback:v=>series.find(s=>s.axis==='y').fmt(v)},grid:{color:cgrid()},beginAtZero:true}},
+        two?{y1:{position:'right',ticks:{color:mut,font:{size:10},callback:v=>series.find(s=>s.axis==='y1').fmt(v)},grid:{display:false},beginAtZero:true}}:{})}});
+}
+function renderIndicadores(d){
+  const cs=chartPalette();
+  const pctN=v=>pct(v/100);
+  indLine('mIndCpm', d, [
+    {label:'CPM',axis:'y',color:cvar('--chart-gasto')||cs[0],fmt:brl,data:d.map(x=>x.im?+((x.sp*taxf())/x.im*1000).toFixed(2):null)},
+    {label:'CTR',axis:'y1',color:cvar('--chart-leads')||cs[1],fmt:pctN,data:d.map(x=>x.im?+(x.cl/x.im*100).toFixed(2):null)}]);
+  // Page Views (Connect Rate / ConvLP) ainda não existem na fonte: sem LP → ConvForm
+  const hasLP=d.some(x=>x.pv>0);
+  document.getElementById('mIndConvT').textContent=hasLP?'Connect Rate e ConvLP por dia':'ConvForm por dia';
+  document.getElementById('mIndConvH').textContent=hasLP?'CR = Page Views/Cliques · ConvLP = Leads/Page Views':'ConvForm = Leads/Cliques';
+  const conv=hasLP?[
+    {label:'Connect Rate',axis:'y',color:cs[0],fmt:pctN,data:d.map(x=>x.cl?+(x.pv/x.cl*100).toFixed(2):null)},
+    {label:'ConvLP',axis:'y',color:cs[1],fmt:pctN,data:d.map(x=>x.pv?+(x.leads/x.pv*100).toFixed(2):null)}]
+  :[{label:'ConvForm',axis:'y',color:cvar('--chart-leads')||cs[1],fmt:pctN,data:d.map(x=>x.cl?+(x.leads/x.cl*100).toFixed(2):null)}];
+  indLine('mIndConv', d, conv);
+  const hasMql=d.some(x=>x.mqls>0);
+  document.getElementById('mIndTxCard').style.display=hasMql?'':'none';
+  document.getElementById('mInd').style.gridTemplateColumns=hasMql?'':'repeat(2,minmax(0,1fr))';
+  if(hasMql) indLine('mIndTx', d, [{label:'Tx MQL',axis:'y',color:cvar('--chart-mqls')||cs[2],fmt:pctN,data:d.map(x=>x.leads?+(x.mqls/x.leads*100).toFixed(2):null)}]);
+}
 function hbar(id, items, valFn, colorFn, top, unit){
   destroy(id); const el=document.getElementById(id); if(!el) return;
   unit=unit||'leads';
@@ -1019,6 +1053,7 @@ function renderMeta(){
   document.getElementById('metaFunnel').innerHTML=funnelHTML(steps);
 
   comboChart('mCombo', daily(fL,fM));
+  renderIndicadores(daily(fL,fM));
   // Mar02: barras de MQLs por anúncio (não leads)
   const mqlByAd={}; fL.forEach(l=>{ mqlByAd[l.ad]=(mqlByAd[l.ad]||0)+l.q; });
   hbar('mMqlAd', Object.entries(mqlByAd).map(([label,leads])=>({label,leads})), x=>x.leads, ()=>cvar('--chart-mqls'), 10, 'MQLs');
