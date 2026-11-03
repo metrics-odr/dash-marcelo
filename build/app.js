@@ -158,7 +158,7 @@ function renderTable(cfg){
       va=(va==null||!isFinite(va))?-Infinity:va; vb=(vb==null||!isFinite(vb))?-Infinity:vb;
       return dir==='asc'?va-vb:vb-va; }); }
   const ext={};
-  cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
+  cfg.cols.forEach(c=>{ if(c.heat){ const vs=rows.map(r=>r.cells[c.key]).filter(v=>v!=null&&isFinite(v)); if(vs.length) ext[c.key]=[Math.min(...vs),Math.max(...vs)]; }});
   // em tabelas densas (fit) o R$ é omitido nas células (o cabeçalho já indica) p/ caber sem cortar
   const brlc=v=>(v==null||!isFinite(v))?'-':nf2.format(v);
   const fmt=(t,v)=> t==='brl'?(fit?brlc(v):brl(v)):t==='pct'?pct(v):t==='int'?intf(v):t==='num'?numf(v):t==='date'?brdate(v):t==='html'?(v==null?'-':String(v)):dimf(v);
@@ -236,7 +236,7 @@ function renderTable(cfg){
 }
 /* Heatmap por coluna: cor FIXA por métrica (definida em identidade-visual.css),
    só a OPACIDADE varia com o valor (maior valor = mais vibrante). */
-const HEAT_HUE={gasto:'--heat-gasto', leads:'--heat-leads', mqls:'--heat-mqls'};
+const HEAT_HUE={gasto:'--heat-gasto', leads:'--heat-leads', mqls:'--heat-mqls', cpl:'--heat-cpl', cpmql:'--heat-cpmql', cac:'--heat-cac', roas:'--heat-roas'};
 function heat(v,lo,hi,kind){
   if(v==null||!isFinite(v)||hi===lo||!HEAT_HUE[kind]) return 'transparent';
   const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
@@ -762,20 +762,20 @@ function relRenderAdTable(id,list){
     {key:'sched',label:'',type:'html',w:34,stk:'l1'},
     {key:'ad',label:'Anúncio',type:'dim',big:true,stk:'l2'},{key:'status',label:'Status',type:'dim',w:140},
     {key:'camp',label:'Campanha',type:'dim',big:true},{key:'adset',label:'Conjunto',type:'dim',big:true},
-    {key:'gasto',label:'Gasto',type:'brl'},{key:'im',label:'Impr.',type:'int'},
+    {key:'gasto',label:'Gasto',type:'brl',heat:'gasto'},{key:'im',label:'Impr.',type:'int'},
     {key:'cpm',label:'CPM',type:'brl'},{key:'ctr',label:'CTR',type:'pct'},
-    {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
+    {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl',heat:'cpl'},
     {key:'mqls',label:'MQLs',type:'int'},{key:'tx',label:'Tx‑MQL',type:'pct'},
-    {key:'cpmql',label:'CPMQL',type:'brl'},
+    {key:'cpmql',label:'CPMQL',type:'brl',heat:'cpmql'},
     {key:'checkins',label:'Check‑ins',type:'int'},
     {key:'txcheckin',label:'Tx‑Check‑in',type:'pct'},
     {key:'cpcin',label:'CPCIN',type:'brl'},
     {key:'presencas',label:'Presenças',type:'int'},
     {key:'cpp',label:'CPP',type:'brl'},
     {key:'vendas',label:'Vendas',type:'int'},
-    {key:'cac',label:'CAC',type:'brl'},
+    {key:'cac',label:'CAC',type:'brl',heat:'cac'},
     {key:'fat',label:'Faturamento',type:'brl'},
-    {key:'roas',label:'ROAS',type:'num'},
+    {key:'roas',label:'ROAS',type:'num',heat:'roas'},
     {key:'link',label:'Link',type:'html',w:90,stk:'r'},
   ];
   const rows=list.map(item=>{
@@ -1067,7 +1067,7 @@ function renderMeta(){
     .sort((a,b)=>a._ord-b._ord).slice(0,10);
   renderTable({id:'mTopCac', center:true, fit:true,
     cols:[{key:'dim',label:'Anúncio',type:'dim',big:true},{key:'mqls',label:'MQLs',type:'int'},
-      {key:'cpmql',label:'CPMQL',type:'brl'},{key:'cac',label:'CAC',type:'brl'}],
+      {key:'cpmql',label:'CPMQL',type:'brl',heat:'cpmql'},{key:'cac',label:'CAC',type:'brl',heat:'cac'}],
     rows:topCacRows});
 
   const dl=daily(fL,fM).slice().reverse();
@@ -1082,13 +1082,13 @@ function renderMeta(){
   // então todas as linhas irmãs continuam visíveis para multi-seleção (Ctrl).
   const hcols=[
     {key:'sched',label:'',type:'html',w:34},
-    {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},{key:'cpm',label:'CPM',type:'brl'},
+    {key:'dim',label:'',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl',heat:'gasto'},{key:'cpm',label:'CPM',type:'brl'},
     {key:'ctr',label:'CTR',type:'pct'},{key:'convf',label:'ConvForm',type:'pct'},
-    {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl'},
-    {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl'},
+    {key:'leads',label:'Leads',type:'int'},{key:'cpl',label:'CPL',type:'brl',heat:'cpl'},
+    {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'cpmql'},
     // Mar03: métricas de venda (aguardando aba de compradores -> "-")
-    {key:'convmql',label:'ConvMQL',type:'pct'},{key:'vendas',label:'Vendas',type:'int'},{key:'cac',label:'CAC',type:'brl'},
-    {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num'},
+    {key:'convmql',label:'ConvMQL',type:'pct'},{key:'vendas',label:'Vendas',type:'int'},{key:'cac',label:'CAC',type:'brl',heat:'cac'},
+    {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num',heat:'roas'},
   ];
   function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a),s=salesOf(a);
     return {k, cells:{sched:'',dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
