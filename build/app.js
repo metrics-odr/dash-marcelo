@@ -1113,13 +1113,13 @@ function renderMeta(){
   // Tabelas hierárquicas: NÃO usam "fit" — a dimensão (campanha/conjunto/anúncio)
   // tem largura automática p/ caber o nome INTEIRO por padrão, nunca quebra linha,
   // é redimensionável (arrastar borda) e 2 cliques na borda auto-ajusta (Sheets/Looker).
-  renderTable({id:'tCamp', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Campanha'}:c), rows:hierRows(aggC), total:totRowOf(totals(Sc.fL,Sc.fM)),
+  renderTable({id:'tCamp', center:true, cols:hcols.map(c=>c.key==='dim'?{...c,label:'Campanha'}:c), rows:hierRows(aggC), total:totRowOf(totals(Sc.fL,Sc.fM)),
     selectable:true, selSet:STATE.mSelC, onSelect:(k,e)=>selDim('C',k,e&&(e.ctrlKey||e.metaKey)),
     afterRender:schedAfter('campanha',nome=>({camp:nome}))});
-  renderTable({id:'tAdset', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Conjunto',big:true}:c), rows:hierRows(aggA), total:totRowOf(totals(Sa.fL,Sa.fM)),
+  renderTable({id:'tAdset', center:true, cols:hcols.map(c=>c.key==='dim'?{...c,label:'Conjunto',big:true}:c), rows:hierRows(aggA), total:totRowOf(totals(Sa.fL,Sa.fM)),
     selectable:true, selSet:STATE.mSelA, onSelect:(k,e)=>selDim('A',k,e&&(e.ctrlKey||e.metaKey)),
     afterRender:schedAfter('conjunto',nome=>({camp:(adsetStruct[nome]||{}).camp, adset:nome}))});
-  renderTable({id:'tAd', cols:hcols.map(c=>c.key==='dim'?{...c,label:'Anúncio'}:c), rows:hierRows(aggD), total:totRowOf(totals(Sd.fL,Sd.fM)),
+  renderTable({id:'tAd', center:true, cols:hcols.map(c=>c.key==='dim'?{...c,label:'Anúncio'}:c), rows:hierRows(aggD), total:totRowOf(totals(Sd.fL,Sd.fM)),
     selectable:true, selSet:STATE.mSelAd, onSelect:(k,e)=>selDim('D',k,e&&(e.ctrlKey||e.metaKey)),
     afterRender:schedAfter('anuncio',nome=>({camp:(adStruct[nome]||{}).camp, adset:(adStruct[nome]||{}).adset, ad:nome}))});
 
