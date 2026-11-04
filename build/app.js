@@ -36,7 +36,7 @@ function nowBRTIso(){
 const STATE = {
   page:'geral', from:TODAY.slice(0,8)+'01', to:TODAY, preset:'mes', tax:true,
   selDays:new Set(),
-  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(),
+  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(), mCA:'todos', mQ:'',
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
@@ -1024,6 +1024,11 @@ function dailyCells(x,d,isTotal){
    (sem filtrar por atribuição). Hoje só há Meta; quando vier google/tiktok/orgânico
    etc., já entram automaticamente. */
 function metaScope(ex){ let fL=leadsActive().filter(r=>r.src==='meta'), fM=metaActive();
+  // filtro CA (Marcelo/Auricelio, pelo nome da campanha) e busca por nome (campanha/conjunto/anúncio)
+  const nz=v=>String(v||'').toLowerCase();
+  if(STATE.mCA!=='todos'){ const ca=STATE.mCA; fL=fL.filter(r=>nz(r.camp).includes(ca)); fM=fM.filter(r=>nz(r.camp).includes(ca)); }
+  const q=nz(STATE.mQ).trim();
+  if(q){ const hit=r=>nz(r.camp).includes(q)||nz(r.adset).includes(q)||nz(r.ad).includes(q); fL=fL.filter(hit); fM=fM.filter(hit); }
   if(ex!=='C'&&STATE.mSelC.size){ fL=fL.filter(r=>STATE.mSelC.has(r.camp)); fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
   if(ex!=='A'&&STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
   if(ex!=='D'&&STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
@@ -1301,7 +1306,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClos
 /* modal genérico (Ações Agendadas) — fecha ao clicar no backdrop ou Esc */
 document.getElementById('modalRoot').addEventListener('click',e=>{ if(e.target.id==='modalRoot'||e.target.classList.contains('modal-backdrop')) closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
-document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
+(function(){ const ca=document.getElementById('mCA'), q=document.getElementById('mSearch');
+  if(ca) ca.addEventListener('change',()=>{ STATE.mCA=ca.value; renderMeta(); });
+  if(q) q.addEventListener('input',()=>{ STATE.mQ=q.value; renderMeta(); });
+})();
+document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mCA='todos'; STATE.mQ=''; const _ca=document.getElementById('mCA'),_q=document.getElementById('mSearch'); if(_ca)_ca.value='todos'; if(_q)_q.value=''; STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
 /* painel de Metas & parâmetros — edita ao vivo, salva em localStorage e recolore

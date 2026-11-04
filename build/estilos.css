@@ -395,3 +395,8 @@
   .rel-wa-copy{font-size:12px; font-weight:700; padding:5px 12px; border-radius:8px; border:1px solid var(--border); background:var(--accent-blue); color:#fff; cursor:pointer}
   .rel-wa-copy:hover{opacity:.9}
   .rel-wa-box{white-space:pre-wrap; word-break:break-word; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; line-height:1.55; margin:0; user-select:all; color:var(--ink)}
+
+.hier-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px}
+.hier-filters label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.hier-filters select,.hier-filters input{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border,#d0d5dd);border-radius:6px;background:var(--card,#fff);color:inherit}
+.hier-filters input{flex:1 1 260px;min-width:0;max-width:420px}
