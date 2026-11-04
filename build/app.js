@@ -236,10 +236,13 @@ function renderTable(cfg){
 }
 /* Heatmap por coluna: cor FIXA por métrica (definida em identidade-visual.css),
    só a OPACIDADE varia com o valor (maior valor = mais vibrante). */
-const HEAT_HUE={gasto:'--heat-gasto', leads:'--heat-leads', mqls:'--heat-mqls', cpl:'--heat-cpl', cpmql:'--heat-cpmql', cac:'--heat-cac', roas:'--heat-roas'};
+const HEAT_HUE={gasto:'--heat-gasto', leads:'--heat-leads', mqls:'--heat-mqls', cpl:'--heat-cpl', cpmql:'--heat-cpmql', cac:'--heat-cac', roas:'--heat-roas', tm:'--heat-roas'};
+/* custo (CPL/CPMQL/CAC): quanto MAIS BARATO, mais escuro; demais: quanto MAIOR, mais escuro */
+const HEAT_INV=new Set(['cpl','cpmql','cac']);
 function heat(v,lo,hi,kind){
   if(v==null||!isFinite(v)||hi===lo||!HEAT_HUE[kind]) return 'transparent';
-  const t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
+  let t=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));
+  if(HEAT_INV.has(kind)) t=1-t;
   const c=hx2rgb(cvar(HEAT_HUE[kind]));
   return `rgba(${c[0]},${c[1]},${c[2]},${(0.06+0.5*t).toFixed(3)})`;
 }
@@ -1010,7 +1013,7 @@ const DAILY_COLS=[
   {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int',heat:'mqls'},{key:'cpmql',label:'CPMQL',type:'brl'},
   // Mar01: métricas de venda (aguardando aba de compradores -> "-")
   {key:'vendas',label:'Vendas',type:'int'},{key:'cac',label:'CAC',type:'brl'},
-  {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num'},
+  {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl',heat:'tm'},{key:'roas',label:'ROAS',type:'num'},
 ];
 function dailyCells(x,d,isTotal){
   const s=salesOf(x);
@@ -1093,7 +1096,7 @@ function renderMeta(){
     {key:'tx',label:'Tx‑MQL',type:'pct'},{key:'mqls',label:'MQLs',type:'int'},{key:'cpmql',label:'CPMQL',type:'brl',heat:'cpmql'},
     // Mar03: métricas de venda (aguardando aba de compradores -> "-")
     {key:'convmql',label:'ConvMQL',type:'pct'},{key:'vendas',label:'Vendas',type:'int'},{key:'cac',label:'CAC',type:'brl',heat:'cac'},
-    {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl'},{key:'roas',label:'ROAS',type:'num',heat:'roas'},
+    {key:'fat',label:'Fat.',type:'brl'},{key:'tm',label:'TM',type:'brl',heat:'tm'},{key:'roas',label:'ROAS',type:'num',heat:'roas'},
   ];
   function hierRows(map){ return Object.entries(map).map(([k,a])=>{const d=derive(a),s=salesOf(a);
     return {k, cells:{sched:'',dim:k,gasto:d.gasto,cpm:d.cpm,ctr:d.ctr,convf:d.convf,leads:a.leads,cpl:d.cpl,tx:d.tx,mqls:a.mqls,cpmql:d.cpmql,
