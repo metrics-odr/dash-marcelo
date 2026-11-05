@@ -245,11 +245,16 @@
   .note{font-size:11.5px; color:var(--muted); margin-top:10px}
   .foot{margin-top:26px; font-size:11.5px; color:var(--muted); border-top:1px solid var(--border); padding-top:12px}
 
+  /* Menu lateral (drawer) no mobile. #navToggle e .nav-overlay são IRMÃOS DIRETOS da
+     .sidebar (dentro de #app) — senão o seletor ~ nunca casa e o menu não abre. */
+  .nav-overlay{display:none}
   @media(max-width:900px){
-    .sidebar{transform:translateX(-100%); transition:transform .2s}
-    #navToggle:checked ~ .sidebar{transform:none}
-    .main-area{margin-left:0}
-    label.ham{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:9px; cursor:pointer; background:var(--surface)}
+    .sidebar{transform:translateX(-100%); transition:transform .2s; z-index:50; width:260px; max-width:82vw; box-shadow:none}
+    #navToggle:checked ~ .sidebar{transform:none; box-shadow:0 0 40px rgba(0,0,0,.45)}
+    #navToggle:checked ~ .nav-overlay{display:block; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:45}
+    .main-area{margin-left:0; width:100%}
+    label.ham{display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border:1px solid var(--border); border-radius:10px; cursor:pointer; background:var(--surface); flex:0 0 auto; font-size:18px}
+    .nav-item{padding:13px 20px}
   }
 
   /* ============================ ABA RELATÓRIO ============================ */
@@ -400,3 +405,79 @@
 .hier-filters label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .hier-filters select,.hier-filters input{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border,#d0d5dd);border-radius:6px;background:var(--card,#fff);color:inherit}
 .hier-filters input{flex:1 1 260px;min-width:0;max-width:420px}
+
+/* ============================ MOBILE (≤640px) ============================
+   Referência: dashes da Thata (dash-thata-*). Tudo cabe na largura da tela sem
+   scroll na PÁGINA; tabelas largas rolam DENTRO do próprio card. */
+@media(max-width:640px){
+  .page-content{padding:12px 12px 48px}
+  .sec-title{margin:18px 0 10px; font-size:11px}
+  /* topbar: não gruda (ocupa 4 linhas); controles em grade compacta */
+  .topbar{position:relative; gap:8px; padding:10px 12px; min-height:0}
+  .topbar .sep, .topbar .spacer{display:none}
+  .topbar .ptitle{font-size:15px; flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis}
+  .topbar .btn{padding:8px 10px; font-size:12px}
+  .period-picker{flex:1 1 100%}
+  .period-btn{width:100%; justify-content:flex-start}
+  .period-btn .period-caret{margin-left:auto}
+  .period-pop{position:fixed; left:8px; right:8px; top:auto; bottom:8px; width:auto; max-width:none; max-height:88vh; overflow:auto}
+  .pp-body{flex-direction:column}
+  .pp-presets{flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); min-width:0}
+  .pp-cals{flex-direction:column; flex-wrap:nowrap}
+  .pp-day{font-size:12px; aspect-ratio:auto; height:32px; width:100%}
+  .pp-cals{padding:8px 12px}
+  .pp-foot{flex-wrap:wrap; position:sticky; bottom:0; z-index:2}
+  .pp-actions{margin-left:auto}
+  #clearBtn{flex:1 1 auto}
+  .tax-toggle{flex:1 1 auto}
+  .toggle-label{font-size:12px}
+  .updated{display:block; flex:1 1 auto; text-align:left; font-size:11px}
+  #refreshBtn{flex:1 1 auto; justify-content:center}
+  /* funil e cards */
+  .grid{gap:12px}
+  .card{padding:12px}
+  .step{padding:10px 12px; gap:8px}
+  .step .m-val{font-size:19px}
+  .step.hl-mql .m-val, .step.hl-gasto .m-val{font-size:23px}
+  .step .secs{gap:12px}
+  .kpis.n1,.kpis.n2{grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+  .kpi{padding:11px 12px}
+  .kpi .kv, .kpis.n2 .kpi .kv{font-size:18px}
+  .kpi .ka{font-size:10.5px; overflow-wrap:anywhere}
+  /* gráficos */
+  .chart-box{height:230px}
+  .chart-sm{height:190px}
+  .donut-wrap{height:200px}
+  .panel .panel-chart{padding:12px 10px 4px}
+  .pc-canvas-wrap{height:170px}
+  .chart-legend{max-height:130px}
+  /* tabelas: rolam dentro do card; "fit" ganha largura mínima p/ ficar legível */
+  .tbl-wrap{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
+  .tbl-normal{max-height:300px}
+  .tbl-double{max-height:360px}
+  table.dt{font-size:12px}
+  table.dt th, table.dt td{padding:8px 9px}
+  table.dt.dt-fit{min-width:620px}
+  table.dt.dt-fit th, table.dt.dt-fit td{font-size:11.5px; padding:7px 6px}
+  /* 1ª coluna (data/dimensão) fixa ao rolar lateralmente */
+  table.dt.dt-fit tbody td:first-child, table.dt.dt-fit tfoot td:first-child{position:sticky; left:0; z-index:1; background:var(--surface)}
+  table.dt.dt-fit tfoot td:first-child{background:var(--tfoot)}
+  table.dt.dt-fit thead th:first-child{position:sticky; left:0; z-index:3}
+  .note{font-size:11px}
+  .panel > .note{padding:10px 12px 12px !important}
+  /* relatório */
+  .rel-head{gap:8px}
+  .rel-title{font-size:17px}
+  .rel-metas-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
+  .rel-brief{padding:14px 14px; font-size:13px}
+  .rel-quad-card{padding:14px}
+  .rel-health{padding:12px 14px}
+  .rel-wa{padding:12px 14px}
+  .rel-wa-box{font-size:12px}
+  table.dt#relSched td:first-child{max-width:200px}
+  .hier-filters{gap:8px}
+  .hier-filters input{flex:1 1 100%; max-width:none}
+  /* modais viram folha inferior */
+  .modal-root{align-items:flex-end}
+  .modal-card{width:100%; max-width:100%; border-radius:16px 16px 0 0; max-height:90vh}
+}
