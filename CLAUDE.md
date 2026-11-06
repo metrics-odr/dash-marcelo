@@ -47,7 +47,7 @@ Evento presencial com várias edições. Aba **Edições** (sidebar, BTBExperien
 verba total (COM imposto) — salvo em `localStorage` (`dm_edicoes`, ativa em `dm_ed_ativa`; por navegador). Edição ativa = escolhida
 ("Usar") ou, no automático, a em captação hoje (senão a próxima). **Pace ideal/dia** = (verba − gasto Meta da edição ×1,13806) ÷ dias
 restantes (hoje incluso; captação até a VÉSPERA da edição) ÷ 1,13806 → valor sem imposto p/ digitar no Meta; independe do toggle.
-Aparece como etapa `hl-pace` logo abaixo do Gasto no funil (Visão Geral, Meta Ads e Report). Dropdown **Edição** (`renderEdDd`) no topo de Visão Geral e Meta Ads escolhe a edição ativa e ajusta o período à janela da captação; período totalmente fora da edição → pace vira o texto "intervalo de datas fora do evento".
+Aparece como a linha "Pace Ideal: R$ X / dia" DENTRO do card Gasto Total do funil (Visão Geral, Meta Ads e Report). Dropdown **Edição** (`renderEdDd`) no topo de Visão Geral e Meta Ads escolhe a edição ativa e ajusta o período à janela da captação; período totalmente fora da edição → pace vira o texto "intervalo de datas fora do evento".
 
 ### Página Check-ins (`renderCk` em `app.js`, `DATA.checkins`)
 Check-in = pessoa na **1ª aba da planilha BTB Summit** (gid 0; e-mail repetido conta 1). `process_checkins()` em `build.py`:

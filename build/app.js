@@ -255,7 +255,7 @@ function toggleSet(set,key,ctrl,others){
 
 /* ---------------- funil ---------------- */
 function funnelHTML(steps){ return steps.map(s=>`
-    <div class="step ${s[3]?'na':''} ${s[4]||''}"><div class="step-main"><div class="m-label">${s[0]}</div><div class="m-val">${s[1]}</div></div>
+    <div class="step ${s[3]?'na':''} ${s[4]||''}"><div class="step-main"><div class="m-label">${s[0]}</div><div class="m-val">${s[1]}</div>${s[5]||''}</div>
     <div class="secs">${s[2].map(x=>`<div><span class="s-label">${x[0]}</span><span class="s-val">${x[1]}</span></div>`).join('')}</div></div>`).join(''); }
 
 /* ---------------- charts ---------------- */
@@ -467,8 +467,7 @@ function renderGeralCore(ids){
   const semUtm=fL.filter(l=>!l.utm).length, comUtm=t.leads-semUtm;
   const NA='<span class="na-tag">sem dado</span>';
   const steps=[
-    ['Gasto Total', brl(g), [], false, 'hl-gasto'],
-    edPaceStep(),
+    ['Gasto Total', brl(g), [], false, 'hl-gasto', edPaceLine()],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
@@ -1080,8 +1079,7 @@ function renderMeta(){
   const t=totals(fL,fM,ck), dv=derive(t), g=dv.gasto;
   const NA='<span class="na-tag">sem dado</span>', sk=salesOf(t);
   const steps=[
-    ['Gasto Total', brl(g), [], false, 'hl-gasto'],
-    edPaceStep(),
+    ['Gasto Total', brl(g), [], false, 'hl-gasto', edPaceLine()],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)],['Frequência',NA]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
@@ -1379,14 +1377,13 @@ document.addEventListener('click',ev=>{
   document.querySelectorAll('.ed-dd.open').forEach(x=>{ if(x!==root) x.classList.remove('open'); });
   if(root) root.classList.toggle('open');
 });
-function edPaceStep(){
-  const e=edAtiva(edLoad());
-  if(!e) return ['Pace ideal / dia','-',[['Configure a edição na aba Edições','']],false,'hl-pace'];
+function edPaceLine(){
+  const e=edAtiva(edLoad()); if(!e) return '';
   const rg=selRange();
-  if(rg && (rg[1]<e.ini || rg[0]>e.data)) return ['Pace ideal / dia · '+escHtml(e.nome),'<span class="ed-out">intervalo de datas fora do evento</span>',[],false,'hl-pace'];
+  if(rg && (rg[1]<e.ini || rg[0]>e.data)) return '<div class="ed-pace"><span class="ed-out">intervalo de datas fora do evento</span></div>';
   const c=edCalc(e);
-  if(c.restantes<=0) return ['Pace ideal / dia · '+escHtml(e.nome),'-',[['Status','Captação encerrada'],['Gasto da edição',brl(c.gasto)]],false,'hl-pace'];
-  return ['Pace ideal / dia · '+escHtml(e.nome),brl(c.pace),[['Verba restante',brl(c.saldo)],['Dias restantes',intf(c.restantes)],['Edição',dmy(e.data)]],false,'hl-pace'];
+  if(c.restantes<=0) return '<div class="ed-pace"><span class="ed-out">captação encerrada</span></div>';
+  return '<div class="ed-pace">Pace Ideal: <b>'+brl(c.pace)+'</b> / dia</div>';
 }
 function renderEd(){
   const list=edLoad(), act=edAtiva(list);
