@@ -55,6 +55,7 @@
   .pp-preset{text-align:left; border:1px solid transparent; background:transparent; color:var(--ink); border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; white-space:nowrap}
   .pp-preset:hover{background:var(--accent-blue-light); border-color:var(--border)}
   .pp-preset.active{background:var(--accent-blue); border-color:var(--accent-blue); color:#fff; font-weight:600}
+  .pp-main{display:flex; flex-direction:column; flex:1 1 auto; min-width:0}
   .pp-cals{display:flex; gap:12px; padding:12px 12px; flex:1 1 auto; min-width:0; flex-wrap:nowrap}
   .pp-cal{flex:1 1 0; min-width:0}
   .pp-cal-head .pp-cal-title{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:600}
@@ -73,7 +74,9 @@
   .pp-day.in.edge-l{border-top-left-radius:50%; border-bottom-left-radius:50%}
   .pp-day.in.edge-r{border-top-right-radius:50%; border-bottom-right-radius:50%}
   .pp-foot{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-top:1px solid var(--border); background:var(--bg)}
-  .pp-range{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .pp-range{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; text-align:center; padding:0 12px 12px}
+  .pp-foot .ed-dd{margin:0; display:inline-flex; align-items:center; gap:8px}
+  .ed-dd-sel{max-width:260px; background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px}
   .pp-actions{display:flex; gap:8px}
   @media(max-width:520px){ .pp-body{flex-direction:column} .pp-presets{flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); min-width:0} }
   .spacer{flex:1 1 auto}
