@@ -205,8 +205,8 @@
   .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border); border-radius:999px; border:2px solid transparent; background-clip:padding-box}
   .tbl-wrap::-webkit-scrollbar-thumb:hover{background:var(--muted); background-clip:padding-box}
   .tbl-wrap::-webkit-scrollbar-corner{background:transparent}
-  .tbl-normal{max-height:250px}
-  .tbl-double{max-height:420px}
+  .tbl-normal{height:250px}
+  .tbl-double{height:420px}
   table.dt{border-collapse:separate; border-spacing:0; min-width:100%; font-size:12.5px; table-layout:fixed}
   table.dt th, table.dt td{padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   table.dt thead th{position:sticky; top:0; z-index:2; background:var(--thead); color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; text-align:right; cursor:pointer; user-select:none}
@@ -478,8 +478,8 @@
   .chart-legend{max-height:130px}
   /* tabelas: rolam dentro do card; "fit" ganha largura mínima p/ ficar legível */
   .tbl-wrap{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain}
-  .tbl-normal{max-height:300px}
-  .tbl-double{max-height:360px}
+  .tbl-normal{height:300px}
+  .tbl-double{height:360px}
   table.dt{font-size:12px}
   table.dt th, table.dt td{padding:8px 9px}
   table.dt.dt-fit{min-width:620px}

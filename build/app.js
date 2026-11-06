@@ -1290,7 +1290,16 @@ function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
   history.replaceState(null,'','#'+p);
   renderAll();
 }
-function renderAll(){ renderEdDd(); if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ed') renderEd(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
+function renderAll(){
+  /* mantém a página exatamente onde estava (rolagem da janela e das tabelas) ao refazer o render */
+  const wy=window.scrollX, wyy=window.scrollY, main=document.scrollingElement;
+  const tsc=[...document.querySelectorAll('.tbl-wrap')].map(w=>[w.scrollTop,w.scrollLeft]);
+  renderAllCore();
+  document.querySelectorAll('.tbl-wrap').forEach((w,i)=>{ if(tsc[i]){ w.scrollTop=tsc[i][0]; w.scrollLeft=tsc[i][1]; } });
+  window.scrollTo(wy,wyy);
+  requestAnimationFrame(()=>window.scrollTo(wy,wyy));
+}
+function renderAllCore(){ renderEdDd(); if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ed') renderEd(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
 
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
    Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
