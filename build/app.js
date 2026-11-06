@@ -473,7 +473,6 @@ function renderGeralCore(ids){
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
     ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]]],
     ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(salesOf(t).convmql)],['CPCIN',brl(salesOf(t).cpcin)]], false, 'hl-mql'],
-    ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById(ids.funnel).innerHTML=funnelHTML(steps);
   // ---- Mar05: métricas secundárias mais úteis (não repetem o funil) ----
@@ -1087,7 +1086,6 @@ function renderMeta(){
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
     ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]]],
     ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(sk.convmql)],['CPCIN',brl(sk.cpcin)]], false, 'hl-mql'],
-    ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById('metaFunnel').innerHTML=funnelHTML(steps);
 
