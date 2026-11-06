@@ -1,6 +1,6 @@
 "use strict";
 const DATA = JSON.parse(document.getElementById('payload').textContent);
-const LEADS = DATA.leads, META = DATA.meta, B = DATA.build;
+const LEADS = DATA.leads, META = DATA.meta, B = DATA.build, CKS = DATA.checkins||[];
 const TAX = B.tax_factor || 1.13806;
 
 /* ---------------- format ---------------- */
@@ -1247,7 +1247,7 @@ function ppApply(){
 }
 
 /* ---------------- navigation & boot ---------------- */
-const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'BTB - Report',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
+const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'BTB - Report',ck:'Check-ins',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
   'fse-emp-geral':'FSE · Empresas Parceiras · Visão Geral','fse-emp-meta':'FSE · Empresas Parceiras · Meta Ads',
   'fse-soc-geral':'FSE · Sócio Executivo · Visão Geral','fse-soc-meta':'FSE · Sócio Executivo · Meta Ads'};
 function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
@@ -1258,7 +1258,7 @@ function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
   history.replaceState(null,'','#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='geral') renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
 
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
    Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
@@ -1291,6 +1291,56 @@ function renderSeg(){
 SEG_PERFIS.forEach(([k,,id])=>{ const el=document.getElementById(id); if(!el) return;
   const v=segVerba(k); if(v!=null) el.value=v;
   el.addEventListener('input',()=>{ try{ el.value===''?localStorage.removeItem('dm_seg_'+k):localStorage.setItem('dm_seg_'+k,el.value); }catch(e){} if(STATE.page==='seg') renderSeg(); }); });
+
+/* ---------------- Check-ins ----------------
+   Fonte: DATA.checkins = 1a aba da planilha BTB Summit (cada pessoa = 1 check-in).
+   ads=1 -> o e-mail também está na aba "Lead Form Nativo" (veio do tráfego);
+   ads=0 -> check-in direto (SDR, sem cadastro prévio).
+   CPCIN = gasto ÷ check-ins totais · CPCIN-Ads = gasto ÷ check-ins do tráfego ·
+   Tx check-in = check-ins do tráfego ÷ leads do tráfego (Meta) no período. */
+function renderCk(){
+  const cks=CKS.filter(c=>dateActive(c.d)), fM=metaActive();
+  const leadsT=leadsActive().filter(l=>l.src==='meta');
+  const g=fM.reduce((s,r)=>s+r.sp,0)*taxf();
+  const tot=cks.length, ads=cks.filter(c=>c.ads).length, dir=tot-ads;
+  const div=(a,b)=>b?a/b:null;
+  const kp=[
+    {label:'Check-ins totais',val:intf(tot),aux:intf(ads)+' do tráfego · '+intf(dir)+' diretos (SDR)',hero:true},
+    {label:'Check-ins Ads',val:intf(ads),aux:'lead do form nativo que fez check-in'},
+    {label:'Check-ins diretos (SDR)',val:intf(dir),aux:'sem cadastro prévio no tráfego'},
+    {label:'Gasto',val:brl(g),aux:STATE.tax?'c/ imposto':'s/ imposto'},
+    {label:'CPCIN',val:brl(div(g,tot)),aux:'gasto ÷ check-ins totais',hero:true},
+    {label:'CPCIN-Ads',val:brl(div(g,ads)),aux:'gasto ÷ check-ins Ads',hero:true},
+    {label:'Tx lead → check-in (tráfego)',val:pct(div(ads,leadsT.length)),aux:intf(ads)+' check-ins Ads ÷ '+intf(leadsT.length)+' leads do tráfego',hero:true},
+  ];
+  document.getElementById('ckKpis').innerHTML=kp.map(kpiCard).join('');
+  // diário
+  const days={}, D=d=>days[d]||(days[d]={d,sp:0,leads:0,tot:0,ads:0});
+  fM.forEach(r=>{ if(r.d) D(r.d).sp+=r.sp; });
+  leadsT.forEach(l=>{ if(l.d) D(l.d).leads++; });
+  cks.forEach(c=>{ if(c.d){ const x=D(c.d); x.tot++; if(c.ads) x.ads++; } });
+  const rowD=x=>{ const gg=x.sp*taxf(); return {d:x.d,dia:weekday(x.d),gasto:gg,leads:x.leads,tot:x.tot,ads:x.ads,dir:x.tot-x.ads,
+    cpcin:div(gg,x.tot),cpcinAds:div(gg,x.ads),tx:div(x.ads,x.leads)}; };
+  const dr=Object.values(days).sort((a,b)=>a.d<b.d?1:-1).map(x=>({k:x.d,cells:rowD(x)}));
+  const mk=(first)=>[first,{key:'gasto',label:'Gasto',type:'brl'},{key:'leads',label:'Leads (tráfego)',type:'int'},
+    {key:'tot',label:'Check-ins totais',type:'int'},{key:'ads',label:'Check-ins Ads',type:'int'},{key:'dir',label:'Diretos (SDR)',type:'int'},
+    {key:'cpcin',label:'CPCIN',type:'brl'},{key:'cpcinAds',label:'CPCIN-Ads',type:'brl'},{key:'tx',label:'Tx lead→check-in',type:'pct'}];
+  renderTable({id:'ckDaily',cols:[{key:'d',label:'Data',type:'date'},{key:'dia',label:'Dia',type:'dim',w:60}].concat(mk({key:'_',label:'',type:'dim',w:0}).slice(1)),
+    rows:dr,total:{gasto:g,leads:leadsT.length,tot:tot,ads:ads,dir:dir,cpcin:div(g,tot),cpcinAds:div(g,ads),tx:div(ads,leadsT.length)}});
+  // por anúncio (só check-ins do tráfego têm anúncio)
+  const byAd={}, A=k=>byAd[k]||(byAd[k]={sp:0,leads:0,ads:0});
+  fM.forEach(r=>{ A(r.ad).sp+=r.sp; });
+  leadsT.forEach(l=>{ A(l.ad).leads++; });
+  cks.filter(c=>c.ads).forEach(c=>{ A(c.ad).ads++; });
+  const ar=Object.entries(byAd).filter(([,x])=>x.sp>0||x.leads>0||x.ads>0).map(([ad,x])=>{ const gg=x.sp*taxf();
+    return {k:ad,cells:{dim:ad,gasto:gg,leads:x.leads,ads:x.ads,cpcinAds:div(gg,x.ads),tx:div(x.ads,x.leads)}}; })
+    .sort((a,b)=>b.cells.ads-a.cells.ads||b.cells.gasto-a.cells.gasto);
+  renderTable({id:'ckAds',cols:[{key:'dim',label:'Anúncio',type:'dim',big:true},{key:'gasto',label:'Gasto',type:'brl'},
+    {key:'leads',label:'Leads',type:'int'},{key:'ads',label:'Check-ins Ads',type:'int'},{key:'cpcinAds',label:'CPCIN-Ads',type:'brl'},{key:'tx',label:'Tx lead→check-in',type:'pct'}],
+    rows:ar,total:{gasto:g,leads:leadsT.length,ads:ads,cpcinAds:div(g,ads),tx:div(ads,leadsT.length)}});
+  document.getElementById('ckNote').innerHTML='Check-in = pessoa na 1ª aba da planilha BTB Summit (e-mail repetido conta 1). <b>Check-in Ads</b> = o e-mail também consta na aba Lead Form Nativo; os demais são check-ins diretos da SDR. '
+    +'Tx lead→check-in compara os check-ins do período com os leads do período (um lead pode fazer check-in em data posterior). '+(CKS.length?'':'<b>Nenhum check-in carregado.</b>');
+}
 
 function applyTheme(){ const t=localStorage.getItem('dm_theme'); if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
 applyTheme();

@@ -425,12 +425,41 @@ def dedup_leads(leads):
 # --------------------------------------------------------------------------- #
 # Processamento -> registros brutos
 # --------------------------------------------------------------------------- #
+def process_checkins(v2_leads, native_leads):
+    """Check-ins = TODA linha da 1a aba da planilha BTB Summit (gid 0), 1 por
+    pessoa (mesmo e-mail conta 1 vez; sem e-mail, cada linha conta).
+    ads=1 quando o e-mail também está na aba Lead Form Nativo (lead que veio do
+    tráfego e fez check-in) — herda campanha/conjunto/anúncio desse lead nativo
+    (o mais antigo), p/ cruzar com o gasto. ads=0 = check-in direto (SDR
+    contatou sem cadastro prévio)."""
+    native_by_email = {}
+    for l in sorted(native_leads, key=lambda x: x["d"] or "9999-99-99"):
+        ek = _email_key(l.get("_em"))
+        if ek:
+            native_by_email.setdefault(ek, l)
+    out, seen = [], set()
+    for l in sorted(v2_leads, key=lambda x: x["d"] or "9999-99-99"):
+        ek = _email_key(l.get("_em"))
+        if ek:
+            if ek in seen:
+                continue
+            seen.add(ek)
+        nat = native_by_email.get(ek) if ek else None
+        src = nat or l
+        out.append({"d": l["d"], "ads": 1 if nat else 0, "camp": src["camp"],
+                    "adset": src["adset"], "ad": src["ad"], "nm": l["nm"]})
+    return out
+
+
 def process(leads_rows, meta_rows, leads_v2_rows=None, leads_native_rows=None):
     leads = process_leads_v1(leads_rows)
     # Native Lead Form (3a base): mesmo layout/regra de MQL da aba Leads (faixas
     # "entre_30_e_50_mil"...), colunas achadas por cabeçalho.
-    leads.extend(process_leads_v1(leads_native_rows or [], native=True))
-    leads.extend(process_leads_v2(leads_v2_rows))
+    native_leads = process_leads_v1(leads_native_rows or [], native=True)
+    leads.extend(native_leads)
+    v2_leads = process_leads_v2(leads_v2_rows)
+    leads.extend(v2_leads)
+    checkins = process_checkins(v2_leads, native_leads)   # antes do dedup (usa _em)
     leads = dedup_leads(leads)
 
     mheader = meta_rows[0] if meta_rows else []
@@ -497,6 +526,7 @@ def process(leads_rows, meta_rows, leads_v2_rows=None, leads_native_rows=None):
             "gh_pat": os.environ.get("SCHED_PAT", ""),
         },
         "leads": leads,
+        "checkins": checkins,
         "meta": meta,
         # Anúncio -> permalink do criativo no Instagram (aba Relatório).
         "ad_links": ad_links,

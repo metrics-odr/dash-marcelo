@@ -42,6 +42,13 @@ campanha** (regra do cliente). Mesmo e-mail em campanhas diferentes conta 1 lead
 Meta rastreada (cruza com o gasto), senão o mais antigo; se outro duplicado for MQL, o escolhido herda faixa/profissão/MQL.
 `gerar_relatorios.py` usa as mesmas 3 bases. Falha em qualquer fonte extra não derruba o build.
 
+### Página Check-ins (`renderCk` em `app.js`, `DATA.checkins`)
+Check-in = pessoa na **1ª aba da planilha BTB Summit** (gid 0; e-mail repetido conta 1). `process_checkins()` em `build.py`:
+`ads=1` se o e-mail também está na aba **Lead Form Nativo** (herda campanha/conjunto/anúncio dela p/ cruzar com o gasto);
+`ads=0` = check-in direto da SDR (sem cadastro prévio). KPIs: Check-ins totais/Ads/diretos · **CPCIN** = gasto ÷ totais ·
+**CPCIN-Ads** = gasto ÷ check-ins Ads · **Tx lead→check-in (tráfego)** = check-ins Ads ÷ leads Meta do período. A aba gid 0
+continua também somada em `leads[]` (2ª fonte). Ainda NÃO alimenta `salesOf()`/aba Relatório.
+
 ### Regra de Lead Qualificado (MQL)
 Faturamento médio mensal **≥ 30 mil** (coluna **N** da aba Leads). Faixas que
 qualificam: `entre_30_e_50_mil`, `entre_50_e_100_mil`, `mais_de_100_mil`.
