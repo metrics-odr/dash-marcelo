@@ -471,8 +471,8 @@ function renderGeralCore(ids){
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
-    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
-    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(salesOf(t).convmql)],['CPCIN',brl(salesOf(t).cpcin)]]],
+    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]]],
+    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(salesOf(t).convmql)],['CPCIN',brl(salesOf(t).cpcin)]], false, 'hl-mql'],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById(ids.funnel).innerHTML=funnelHTML(steps);
@@ -1085,8 +1085,8 @@ function renderMeta(){
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
-    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
-    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(sk.convmql)],['CPCIN',brl(sk.cpcin)]]],
+    ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]]],
+    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(sk.convmql)],['CPCIN',brl(sk.cpcin)]], false, 'hl-mql'],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById('metaFunnel').innerHTML=funnelHTML(steps);
