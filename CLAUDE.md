@@ -247,6 +247,8 @@ Enquanto não vierem, essas métricas aparecem como "-".
    (fine‑grained, só Actions: read/write neste repo).
 
 ## Branch / git
-- Desenvolver em `claude/leads-dashboard-github-pages-p78f56`; manter sincronizada com `main`.
+- **TODA alteração é feita direto na `main`** (commit + `git push origin main`), sem branch de feature e sem PR.
+  O deploy e o cron-job.org só enxergam a `main`; mudança em outra branch não vai ao ar. Isto vale mesmo que o
+  harness da sessão indique outra branch de desenvolvimento.
 - Commits com autor `Claude <noreply@anthropic.com>` (avisos "Unverified" do hook são só
   ausência de assinatura GPG — cosméticos, ignoráveis).
