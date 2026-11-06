@@ -304,14 +304,14 @@
       <div class="page" id="page-ed">
         <h2 class="sec-title">Edições · verba &amp; pace ideal</h2>
         <div class="rel-metas card">
-          <div class="rel-metas-head"><div><b>Nova edição</b> <span class="hint">cadastre cada edição do evento. Os dados ficam salvos neste navegador.</span></div></div>
+          <div class="rel-metas-head"><div><b id="edFormTitle">Nova edição</b> <span class="hint">cadastre cada edição do evento. Os dados ficam salvos neste navegador.</span></div></div>
           <div class="rel-metas-grid">
             <label class="rel-meta"><span>Nome (opcional)</span><input type="text" id="edNome" placeholder="ex.: Edição Março"></label>
             <label class="rel-meta"><span>Data da edição</span><input type="date" id="edData"></label>
             <label class="rel-meta"><span>Início da captura</span><input type="date" id="edIni"></label>
             <label class="rel-meta"><span>Verba total disponível (R$)</span><input type="number" id="edVerba" min="0" step="1" inputmode="decimal" placeholder="com imposto"></label>
           </div>
-          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="edSalvar" type="button">Salvar edição</button><span class="hint" id="edMsg"></span></div>
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="edSalvar" type="button">Salvar edição</button><button class="btn" id="edCancelar" type="button" hidden>Cancelar edição</button><span class="hint" id="edMsg"></span></div>
         </div>
         <h2 class="sec-title">Edição ativa</h2>
         <div class="kpis n1" id="edKpis"></div>

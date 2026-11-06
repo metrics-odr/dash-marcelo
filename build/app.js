@@ -1410,24 +1410,31 @@ function renderEd(){
   }
   const rows=list.slice().sort((a,b)=>a.data<b.data?1:-1).map(e=>{ const c=edCalc(e), on=act&&act.id===e.id;
     return `<tr class="${on?'ed-on':''}"><td class="dim">${escHtml(e.nome)}${on?' ★':''}</td><td>${dmy(e.data)}</td><td>${dmy(e.ini)}</td><td>${brl(e.verba)}</td><td>${brl(c.gasto)}</td><td>${c.pace==null?'-':brl(c.pace)}</td><td>${c.status}</td>
-      <td><button class="ed-btn${on?' on':''}" data-act="use" data-id="${e.id}"${on?' disabled':''}>${on?'✓ Ativa':'Usar'}</button> <button class="ed-btn" data-act="del" data-id="${e.id}">Excluir</button></td></tr>`; }).join('');
+      <td><button class="ed-btn" data-act="edit" data-id="${e.id}">Editar</button> <button class="ed-btn${on?' on':''}" data-act="use" data-id="${e.id}"${on?' disabled':''}>${on?'✓ Ativa':'Usar'}</button> <button class="ed-btn" data-act="del" data-id="${e.id}">Excluir</button></td></tr>`; }).join('');
   document.getElementById('edLista').innerHTML='<thead><tr><th>Edição</th><th>Data</th><th>Início captura</th><th>Verba</th><th>Gasto</th><th>Pace ideal/dia</th><th>Status</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="8">Nenhuma edição cadastrada.</td></tr>')+'</tbody>';
   document.getElementById('edNote').innerHTML='Pace ideal = (verba total COM imposto − gasto da edição com imposto ×'+TAX+') ÷ dias restantes (hoje incluso) ÷ '+TAX+' = orçamento diário SEM imposto a digitar no Meta Ads. A captação vai do início até a véspera da edição. Gasto = todo o Meta Ads do período (sem filtros de tela). Não muda com o toggle de imposto. A edição ★ é a que aparece no funil; no automático é a que está em captação (senão a próxima). Os cadastros ficam salvos neste navegador.';
 }
 (function wireEd(){
   const $=id=>document.getElementById(id), msg=t=>{ const m=$('edMsg'); if(m) m.textContent=t||''; };
+  let editId=null;
+  const resetForm=()=>{ editId=null; ['edNome','edData','edIni','edVerba'].forEach(k=>$(k).value=''); $('edSalvar').textContent='Salvar edição'; $('edFormTitle').textContent='Nova edição'; $('edCancelar').hidden=true; };
+  $('edCancelar').addEventListener('click',()=>{ resetForm(); msg(''); });
   $('edSalvar').addEventListener('click',()=>{
     const data=$('edData').value, ini=$('edIni').value, verba=parseFloat(String($('edVerba').value).replace(',','.'));
     if(!data||!ini||!isFinite(verba)||verba<=0) return msg('Preencha data da edição, início da captura e verba total.');
     if(ini>=data) return msg('O início da captura precisa ser antes da data da edição.');
-    const list=edLoad(), id='e'+Date.now();
-    list.push({id,nome:($('edNome').value.trim()||('Edição '+dmy(data))),data,ini,verba});
-    edSave(list); try{ localStorage.setItem(ED_ATIVA,id); }catch(er){}
-    ['edNome','edData','edIni','edVerba'].forEach(k=>$(k).value=''); msg('Edição salva e definida como ativa.'); renderAll();
+    const list=edLoad(), nome=$('edNome').value.trim()||('Edição '+dmy(data));
+    if(editId){ const e=list.find(x=>x.id===editId); if(e){ e.nome=nome; e.data=data; e.ini=ini; e.verba=verba; } edSave(list); resetForm(); msg('Edição atualizada.'); }
+    else { const id='e'+Date.now(); list.push({id,nome,data,ini,verba}); edSave(list); try{ localStorage.setItem(ED_ATIVA,id); }catch(er){} resetForm(); msg('Edição salva e definida como ativa.'); }
+    renderAll();
   });
   $('edLista').addEventListener('click',ev=>{ const b=ev.target.closest('button[data-act]'); if(!b) return;
+    if(b.dataset.act==='edit'){ const e=edLoad().find(x=>x.id===b.dataset.id); if(!e) return;
+      editId=e.id; $('edNome').value=e.nome; $('edData').value=e.data; $('edIni').value=e.ini; $('edVerba').value=e.verba;
+      $('edSalvar').textContent='Salvar alterações'; $('edFormTitle').textContent='Editando: '+e.nome; $('edCancelar').hidden=false; msg('');
+      $('edNome').scrollIntoView({behavior:'smooth',block:'center'}); return; }
     if(b.dataset.act==='use'){ edSetAtiva(b.dataset.id,false); }
-    else { edSave(edLoad().filter(e=>e.id!==b.dataset.id)); try{ if(localStorage.getItem(ED_ATIVA)===b.dataset.id) localStorage.removeItem(ED_ATIVA); }catch(er){} }
+    else { edSave(edLoad().filter(e=>e.id!==b.dataset.id)); if(editId===b.dataset.id) resetForm(); try{ if(localStorage.getItem(ED_ATIVA)===b.dataset.id) localStorage.removeItem(ED_ATIVA); }catch(er){} }
     renderAll(); });
 })();
 

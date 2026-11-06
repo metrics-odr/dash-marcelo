@@ -79,6 +79,7 @@
   .spacer{flex:1 1 auto}
   .updated{font-size:11.5px; color:var(--muted); text-align:right; line-height:1.3}
   .btn{border:1px solid var(--border); background:var(--surface); color:var(--ink); border-radius:9px; padding:8px 12px; font-size:12.5px; cursor:pointer; display:inline-flex; gap:7px; align-items:center; white-space:nowrap}
+  .btn[hidden]{display:none}
   .btn:hover{border-color:var(--accent-blue)}
   .btn.primary{background:var(--accent-blue); border-color:var(--accent-blue); color:#fff}
   .btn.primary:hover{filter:brightness(1.06)}
