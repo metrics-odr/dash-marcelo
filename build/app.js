@@ -1055,12 +1055,12 @@ function metaScope(ex){ let fL=leadsActive().filter(r=>r.src==='meta'), fM=metaA
   if(ex!=='A'&&STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
   if(ex!=='D'&&STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
   return {fL,fM}; }
-/* selecao multipla: Ctrl adiciona (OR) sem sumir as demais linhas; clique simples troca a ancora */
+/* selecao multipla: Ctrl adiciona (OR) dentro da dimensao; clique simples troca a selecao da propria dimensao e mantem as outras (cumulativo) */
 function selDim(dim,key,ctrl){
   const sets={C:STATE.mSelC,A:STATE.mSelA,D:STATE.mSelAd}, s=sets[dim];
   if(ctrl){ s.has(key)?s.delete(key):s.add(key); }
-  else { const sole=s.has(key)&&s.size===1&&!Object.entries(sets).some(([k2,x])=>k2!==dim&&x.size);
-    Object.values(sets).forEach(x=>x.clear()); if(!sole) s.add(key); }
+  else { const sole=s.has(key)&&s.size===1;   // filtros de dimensoes diferentes sao CUMULATIVOS (AND); clique simples troca so a propria dimensao
+    s.clear(); if(!sole) s.add(key); }
   renderMeta();
 }
 /* check-ins do tráfego (ads=1, têm campanha/conjunto/anúncio) respeitando período e os mesmos filtros de metaScope */
