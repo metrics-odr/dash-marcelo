@@ -42,6 +42,13 @@ campanha** (regra do cliente). Mesmo e-mail em campanhas diferentes conta 1 lead
 Meta rastreada (cruza com o gasto), senão o mais antigo; se outro duplicado for MQL, o escolhido herda faixa/profissão/MQL.
 `gerar_relatorios.py` usa as mesmas 3 bases. Falha em qualquer fonte extra não derruba o build.
 
+### Aba Edições + Pace ideal (`renderEd`/`edPaceStep` em `app.js`)
+Evento presencial com várias edições. Aba **Edições** (sidebar, BTBExperience): cadastra data da edição, início da captura e
+verba total (COM imposto) — salvo em `localStorage` (`dm_edicoes`, ativa em `dm_ed_ativa`; por navegador). Edição ativa = escolhida
+("Usar") ou, no automático, a em captação hoje (senão a próxima). **Pace ideal/dia** = (verba − gasto Meta da edição ×1,13806) ÷ dias
+restantes (hoje incluso; captação até a VÉSPERA da edição) ÷ 1,13806 → valor sem imposto p/ digitar no Meta; independe do toggle.
+Aparece como etapa `hl-pace` logo abaixo do Gasto no funil (Visão Geral e Report).
+
 ### Página Check-ins (`renderCk` em `app.js`, `DATA.checkins`)
 Check-in = pessoa na **1ª aba da planilha BTB Summit** (gid 0; e-mail repetido conta 1). `process_checkins()` em `build.py`:
 `ads=1` se o e-mail também está na aba **Lead Form Nativo** (herda campanha/conjunto/anúncio dela p/ cruzar com o gasto);

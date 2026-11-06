@@ -23,6 +23,7 @@
     <div class="nav-item active" data-page="geral"><span class="ic"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16" r="4"/><circle cx="18" cy="16" r="4"/><path d="M10 15.5h4M3.2 14 5.5 5.5H9l1 4.5M20.8 14 18.5 5.5H15l-1 4.5"/></svg></span> Visão Geral</div>
     <div class="nav-item" data-page="meta"><span class="ic"><svg class="nav-svg nav-meta" viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="metaGrad" x1="2" y1="12" x2="22" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0064E0"/><stop offset=".55" stop-color="#0081FB"/><stop offset="1" stop-color="#00A3FF"/></linearGradient></defs><path d="M12 12c-1.6-2.6-3.1-5.4-5.4-5.4C4 6.6 2.4 9.2 2.4 12.6c0 2.3 1 4.4 3 4.4 2.5 0 4.1-2.8 6.6-5zm0 0c1.6 2.6 3.1 5.4 5.4 5.4 2.6 0 4.2-2.6 4.2-6 0-2.3-1-4.4-3-4.4-2.5 0-4.1 2.8-6.6 5z" stroke="url(#metaGrad)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Meta Ads</div>
     <div class="nav-item" data-page="rel"><span class="ic"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 12h6M9 16h6M9 8.5h2"/></svg></span> Report</div>
+    <div class="nav-item" data-page="ed"><span class="ic"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="3"/><path d="M8 2.5v3M16 2.5v3M3.5 10h17M12 13.5v5M9.5 16h5"/></svg></span> Edições</div>
     <div class="nav-sep"></div>
     <div class="sec">Distribuição</div>
     <div class="nav-item" data-page="ck"><span class="ic"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="17" rx="3"/><path d="M8 2.5v3M16 2.5v3M8 13l3 3 5-6"/></svg></span> Check-ins</div>
@@ -296,6 +297,26 @@
         <h2 class="sec-title">Pace ideal diário</h2>
         <div class="kpis n1" id="segKpisPace"></div>
         <p class="note" id="segNote"></p>
+      </div>
+
+      <!-- ===================== PÁGINA: EDIÇÕES (verba & pace) ===================== -->
+      <div class="page" id="page-ed">
+        <h2 class="sec-title">Edições · verba &amp; pace ideal</h2>
+        <div class="rel-metas card">
+          <div class="rel-metas-head"><div><b>Nova edição</b> <span class="hint">cadastre cada edição do evento. Os dados ficam salvos neste navegador.</span></div></div>
+          <div class="rel-metas-grid">
+            <label class="rel-meta"><span>Nome (opcional)</span><input type="text" id="edNome" placeholder="ex.: Edição Março"></label>
+            <label class="rel-meta"><span>Data da edição</span><input type="date" id="edData"></label>
+            <label class="rel-meta"><span>Início da captura</span><input type="date" id="edIni"></label>
+            <label class="rel-meta"><span>Verba total disponível (R$)</span><input type="number" id="edVerba" min="0" step="1" inputmode="decimal" placeholder="com imposto"></label>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="edSalvar" type="button">Salvar edição</button><span class="hint" id="edMsg"></span></div>
+        </div>
+        <h2 class="sec-title">Edição ativa</h2>
+        <div class="kpis n1" id="edKpis"></div>
+        <h2 class="sec-title">Edições cadastradas</h2>
+        <div class="card" style="padding:0"><div class="tbl-wrap"><table class="dt dt-center" id="edLista"></table></div></div>
+        <p class="note" id="edNote"></p>
       </div>
 
       <div class="page" id="page-vv"><div class="empty-page"><div class="empty-title">Video View</div><div class="empty-msg">Funil não implementado</div></div></div>

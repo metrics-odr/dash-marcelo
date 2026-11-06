@@ -468,6 +468,7 @@ function renderGeralCore(ids){
   const NA='<span class="na-tag">sem dado</span>';
   const steps=[
     ['Gasto Total', brl(g), [], false, 'hl-gasto'],
+    edPaceStep(),
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
@@ -1276,7 +1277,7 @@ function ppApply(){
 }
 
 /* ---------------- navigation & boot ---------------- */
-const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'BTB - Report',ck:'Check-ins',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
+const PAGE_TITLES={geral:'Visão Geral',meta:'Meta Ads',rel:'BTB - Report',ck:'Check-ins',ed:'Edições',seg:'Seguidores',vv:'Video View',iscas:'Iscas',
   'fse-emp-geral':'FSE · Empresas Parceiras · Visão Geral','fse-emp-meta':'FSE · Empresas Parceiras · Meta Ads',
   'fse-soc-geral':'FSE · Sócio Executivo · Visão Geral','fse-soc-meta':'FSE · Sócio Executivo · Meta Ads'};
 function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
@@ -1287,7 +1288,7 @@ function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
   history.replaceState(null,'','#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
+function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ed') renderEd(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
 
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
    Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
@@ -1320,6 +1321,81 @@ function renderSeg(){
 SEG_PERFIS.forEach(([k,,id])=>{ const el=document.getElementById(id); if(!el) return;
   const v=segVerba(k); if(v!=null) el.value=v;
   el.addEventListener('input',()=>{ try{ el.value===''?localStorage.removeItem('dm_seg_'+k):localStorage.setItem('dm_seg_'+k,el.value); }catch(e){} if(STATE.page==='seg') renderSeg(); }); });
+
+
+/* ---------------- Edições: verba por edição + pace ideal ----------------
+   Evento presencial com várias edições (não é mensal/perpétuo). Cada edição: data do evento,
+   início da captura e verba total (COM imposto). Cadastro salvo em localStorage (dm_edicoes).
+   Edição ativa = a escolhida manualmente (dm_ed_ativa) ou, no automático: a que está em captação hoje,
+   senão a próxima, senão a mais recente.
+   Captura vai do início até a VÉSPERA da edição. Gasto da edição = gasto Meta (todos os anúncios, sem
+   filtros de tela) nesse intervalo × TAX. Pace ideal = (verba − gasto com imposto) ÷ dias restantes
+   (hoje incluso; antes do início conta desde o início) ÷ TAX = valor SEM imposto p/ digitar no Meta.
+   Não muda com o toggle de imposto. */
+const ED_KEY='dm_edicoes', ED_ATIVA='dm_ed_ativa';
+const edLoad=()=>{ try{ const a=JSON.parse(localStorage.getItem(ED_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } };
+const edSave=a=>{ try{ localStorage.setItem(ED_KEY,JSON.stringify(a)); }catch(e){} };
+const dUTC=d=>Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10));
+const dayDiff=(a,b)=>Math.round((dUTC(b)-dUTC(a))/864e5);
+const dayAdd=(d,n)=>new Date(dUTC(d)+n*864e5).toISOString().slice(0,10);
+const dmy=d=>d?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'-';
+function edAtiva(list){
+  if(!list.length) return null;
+  let id=null; try{ id=localStorage.getItem(ED_ATIVA); }catch(e){}
+  const man=list.find(e=>e.id===id); if(man) return man;
+  const cur=list.filter(e=>e.ini<=TODAY&&TODAY<=e.data).sort((a,b)=>a.data<b.data?-1:1)[0]; if(cur) return cur;
+  const nxt=list.filter(e=>e.ini>TODAY).sort((a,b)=>a.ini<b.ini?-1:1)[0]; if(nxt) return nxt;
+  return list.slice().sort((a,b)=>a.data<b.data?1:-1)[0];
+}
+function edCalc(e){
+  const fim=dayAdd(e.data,-1), gasto=META.reduce((s,r)=>(r.d&&r.d>=e.ini&&r.d<=fim)?s+(r.sp||0):s,0)*TAX;
+  const start=TODAY>e.ini?TODAY:e.ini, restantes=dayDiff(start,fim)+1, saldo=e.verba-gasto;
+  const pace=restantes>0?saldo/restantes/TAX:null;
+  const status=TODAY<e.ini?'Aguardando início':(restantes>0?'Em captação':'Captação encerrada');
+  return {e,fim,gasto,saldo,restantes,pace,status,pct:e.verba>0?gasto/e.verba:null};
+}
+function edPaceStep(){
+  const e=edAtiva(edLoad());
+  if(!e) return ['Pace ideal / dia','-',[['Configure a edição na aba Edições','']],false,'hl-pace'];
+  const c=edCalc(e);
+  if(c.restantes<=0) return ['Pace ideal / dia · '+escHtml(e.nome),'-',[['Status','Captação encerrada'],['Gasto da edição',brl(c.gasto)]],false,'hl-pace'];
+  return ['Pace ideal / dia · '+escHtml(e.nome),brl(c.pace),[['Verba restante',brl(c.saldo)],['Dias restantes',intf(c.restantes)],['Edição',dmy(e.data)]],false,'hl-pace'];
+}
+function renderEd(){
+  const list=edLoad(), act=edAtiva(list);
+  const kEl=document.getElementById('edKpis');
+  if(!act){ kEl.innerHTML=kpiCard({label:'Nenhuma edição',val:'-',aux:'cadastre a primeira acima'}); }
+  else { const c=edCalc(act);
+    kEl.innerHTML=[
+      {label:'Pace ideal / dia (digitar no Meta)',val:c.pace==null?'-':brl(c.pace),hero:true,aux:escHtml(act.nome)+' · '+c.status},
+      {label:'Verba total',val:brl(act.verba),aux:'com imposto'},
+      {label:'Gasto da edição',val:brl(c.gasto),aux:(c.pct!=null?pct(c.pct)+' da verba · ':'')+'c/ imposto'},
+      {label:'Verba restante',val:brl(c.saldo),aux:'verba − gasto'},
+      {label:'Dias restantes',val:intf(Math.max(c.restantes,0)),aux:'captação até '+dmy(c.fim)+' (véspera)'},
+      {label:'Data da edição',val:dmy(act.data),aux:'captação desde '+dmy(act.ini)}].map(kpiCard).join('');
+  }
+  const rows=list.slice().sort((a,b)=>a.data<b.data?1:-1).map(e=>{ const c=edCalc(e), on=act&&act.id===e.id;
+    return `<tr class="${on?'ed-on':''}"><td class="dim">${escHtml(e.nome)}${on?' ★':''}</td><td>${dmy(e.data)}</td><td>${dmy(e.ini)}</td><td>${brl(e.verba)}</td><td>${brl(c.gasto)}</td><td>${c.pace==null?'-':brl(c.pace)}</td><td>${c.status}</td>
+      <td><button class="ed-btn" data-act="use" data-id="${e.id}">Usar</button> <button class="ed-btn" data-act="del" data-id="${e.id}">Excluir</button></td></tr>`; }).join('');
+  document.getElementById('edLista').innerHTML='<thead><tr><th>Edição</th><th>Data</th><th>Início captura</th><th>Verba</th><th>Gasto</th><th>Pace ideal/dia</th><th>Status</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="8">Nenhuma edição cadastrada.</td></tr>')+'</tbody>';
+  document.getElementById('edNote').innerHTML='Pace ideal = (verba total COM imposto − gasto da edição com imposto ×'+TAX+') ÷ dias restantes (hoje incluso) ÷ '+TAX+' = orçamento diário SEM imposto a digitar no Meta Ads. A captação vai do início até a véspera da edição. Gasto = todo o Meta Ads do período (sem filtros de tela). Não muda com o toggle de imposto. A edição ★ é a que aparece no funil; no automático é a que está em captação (senão a próxima). Os cadastros ficam salvos neste navegador.';
+}
+(function wireEd(){
+  const $=id=>document.getElementById(id), msg=t=>{ const m=$('edMsg'); if(m) m.textContent=t||''; };
+  $('edSalvar').addEventListener('click',()=>{
+    const data=$('edData').value, ini=$('edIni').value, verba=parseFloat(String($('edVerba').value).replace(',','.'));
+    if(!data||!ini||!isFinite(verba)||verba<=0) return msg('Preencha data da edição, início da captura e verba total.');
+    if(ini>=data) return msg('O início da captura precisa ser antes da data da edição.');
+    const list=edLoad(), id='e'+Date.now();
+    list.push({id,nome:($('edNome').value.trim()||('Edição '+dmy(data))),data,ini,verba});
+    edSave(list); try{ localStorage.setItem(ED_ATIVA,id); }catch(er){}
+    ['edNome','edData','edIni','edVerba'].forEach(k=>$(k).value=''); msg('Edição salva e definida como ativa.'); renderAll();
+  });
+  $('edLista').addEventListener('click',ev=>{ const b=ev.target.closest('button[data-act]'); if(!b) return;
+    if(b.dataset.act==='use'){ try{ localStorage.setItem(ED_ATIVA,b.dataset.id); }catch(er){} }
+    else { edSave(edLoad().filter(e=>e.id!==b.dataset.id)); try{ if(localStorage.getItem(ED_ATIVA)===b.dataset.id) localStorage.removeItem(ED_ATIVA); }catch(er){} }
+    renderAll(); });
+})();
 
 /* ---------------- Check-ins ----------------
    Fonte: DATA.checkins = 1a aba da planilha BTB Summit (cada pessoa = 1 check-in).
