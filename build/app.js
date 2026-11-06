@@ -1376,15 +1376,14 @@ function edSetAtiva(id,setPeriod){
 function renderEdDd(){
   const list=edLoad().sort((a,b)=>a.data<b.data?1:-1), act=edAtiva(list);
   const el=document.getElementById('edDdPop'); if(!el) return;
-  if(!list.length){ el.innerHTML='<button class="btn" type="button" data-edd-go>Cadastrar edição…</button>'; return; }
-  el.innerHTML='<span class="ed-dd-k">Edição</span><select class="ed-dd-sel" id="edDdSel">'+list.map(e=>'<option value="'+e.id+'"'+(e.id===act.id?' selected':'')+'>'+escHtml(e.nome)+' · captação '+dmy(e.ini)+' → '+dmy(e.data)+'</option>').join('')+'</select>';
+  if(!list.length){ el.innerHTML='<button class="ed-dd-btn" type="button" data-edd-go><span class="ed-dd-k">Edição</span><span>Cadastrar edição…</span></button>'; return; }
+  el.innerHTML='<button class="ed-dd-btn" type="button" data-edd-btn><span class="ed-dd-k">Edição</span><span>'+escHtml(act.nome)+'</span><span class="ed-dd-car">▾</span></button>'
+    +'<div class="ed-dd-list">'+list.map(e=>'<button class="ed-dd-item'+(e.id===act.id?' on':'')+'" type="button" data-edd-id="'+e.id+'">'+escHtml(e.nome)+'<small>captação '+dmy(e.ini)+' → edição '+dmy(e.data)+'</small></button>').join('')+'</div>';
 }
-document.getElementById('periodPop').addEventListener('change',ev=>{
-  if(ev.target.id!=='edDdSel') return;
-  edSetAtiva(ev.target.value,true); ppClose(); renderAll();
-});
 document.getElementById('periodPop').addEventListener('click',ev=>{
-  if(ev.target.closest('[data-edd-go]')){ ppClose(); setPage('ed'); }
+  if(ev.target.closest('[data-edd-go]')){ ppClose(); setPage('ed'); return; }
+  const it=ev.target.closest('[data-edd-id]'); if(it){ edSetAtiva(it.dataset.eddId,true); ppClose(); renderAll(); return; }
+  if(ev.target.closest('[data-edd-btn]')) document.getElementById('edDdPop').classList.toggle('open');
 });
 function edPaceLine(){
   const e=edAtiva(edLoad()); if(!e) return '';
