@@ -36,7 +36,7 @@ function nowBRTIso(){
 const STATE = {
   page:'geral', from:TODAY.slice(0,8)+'01', to:TODAY, preset:'mes', tax:true,
   selDays:new Set(),
-  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(), mCA:'todos', mQ:'',
+  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(), mCA:'todos', mQ:'', hierMetric:'cpmql',
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
@@ -366,7 +366,17 @@ function donutQlf(id, mqls, leads){
    Clique numa linha da legenda OU numa linha do gráfico filtra a tabela (selDim);
    quando a tabela já tem seleção (STATE.mSel*), o gráfico plota SÓ as linhas
    selecionadas (a legenda continua listando todas p/ dar pra trocar a seleção). */
-function mqlByDimChart(id, fL, fM, agg, dim, selSet){
+const HIER_METRICS=[{k:'gasto',label:'Gasto',title:'Gasto',suf:''},{k:'cpl',label:'CPL',title:'Custo por Lead',suf:' / lead'},
+  {k:'cpmql',label:'CPMQL',title:'Custo por MQL',suf:' / MQL'},{k:'checkins',label:'Check‑ins',title:'Check‑ins',suf:' check‑ins'}];
+// valor da métrica escolhida a partir de gasto/leads/MQLs/check-ins (gasto já sem imposto)
+function hierMetricVal(m, sp, leads, mqls, cks){
+  const g=sp*taxf();
+  if(m==='gasto') return sp>0?+g.toFixed(2):null;
+  if(m==='cpl') return leads>0?+(g/leads).toFixed(2):null;
+  if(m==='cpmql') return mqls>0?+(g/mqls).toFixed(2):null;
+  return cks>0?cks:null;
+}
+function mqlByDimChart(id, fL, fM, agg, dim, selSet, fC){
   destroy(id); const el=document.getElementById(id); const legEl=document.getElementById(id+'Legend');
   if(!el) return;
   const days=[...new Set([...fL,...fM].filter(r=>r.d).map(r=>r.d))].sort();
@@ -381,12 +391,22 @@ function mqlByDimChart(id, fL, fM, agg, dim, selSet){
   // (a legenda abaixo continua mostrando todos os membros, pra dar pra trocar a seleção)
   const plotMembers = (selSet&&selSet.size) ? members.filter(m=>selSet.has(m)) : members;
   // métrica do gráfico: CUSTO POR MQL por dia (gasto do dia / MQLs do dia), não contagem
+  const MET=STATE.hierMetric||'cpmql', MD=HIER_METRICS.find(x=>x.k===MET)||HIER_METRICS[2];
+  const isMoney=MET!=='checkins';
+  const fmtV=v=>v==null?'-':(isMoney?brl(v):intf(v));
+  const tEl=document.getElementById(id+'Title'); if(tEl) tEl.textContent=MD.title;
+  const mEl=document.getElementById(id+'Metric');
+  if(mEl){
+    mEl.innerHTML=HIER_METRICS.map(x=>`<button type="button" data-m="${x.k}" class="${x.k===MET?'on':''}">${x.label}</button>`).join('');
+    mEl.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ STATE.hierMetric=b.dataset.m; if(typeof renderMeta==='function') renderMeta(); else render(); }));
+  }
   const dsets=plotMembers.map(mv=>{
     const idx=members.indexOf(mv);
-    const spDay={}, mqlDay={}; days.forEach(d=>{spDay[d]=0; mqlDay[d]=0;});
+    const spDay={}, ldDay={}, mqlDay={}, ckDay={}; days.forEach(d=>{spDay[d]=0; ldDay[d]=0; mqlDay[d]=0; ckDay[d]=0;});
     fM.forEach(r=>{ if(r[dim]===mv && r.d!=null && spDay[r.d]!=null) spDay[r.d]+=r.sp; });
-    fL.forEach(r=>{ if(r[dim]===mv && r.d!=null && mqlDay[r.d]!=null) mqlDay[r.d]+=r.q; });
-    const data=days.map(d=> mqlDay[d]>0 ? +((spDay[d]*taxf())/mqlDay[d]).toFixed(2) : null);
+    fL.forEach(r=>{ if(r[dim]===mv && r.d!=null && mqlDay[r.d]!=null){ mqlDay[r.d]+=r.q; ldDay[r.d]+=1; } });
+    (fC||[]).forEach(c=>{ if(c[dim]===mv && c.d!=null && ckDay[c.d]!=null) ckDay[c.d]+=1; });
+    const data=days.map(d=>hierMetricVal(MET,spDay[d],ldDay[d],mqlDay[d],ckDay[d]));
     const col=pal[idx%pal.length];
     return {label:String(mv), data, borderColor:col, backgroundColor:col, borderWidth:2, pointRadius:2, tension:.25, spanGaps:true};
   });
@@ -401,22 +421,22 @@ function mqlByDimChart(id, fL, fM, agg, dim, selSet){
         // tooltip: nome COMPLETO do dataset (nunca o rótulo do eixo X) + CPMQL do dia.
         // usa array (2 linhas por item) — o Chart.js NUNCA corta/trunca texto do tooltip.
         tooltip:{displayColors:true,
-          callbacks:{title:()=>'', label:c=>[c.dataset.label, (c.raw==null?'-':brl(c.raw))+' / MQL']}}
+          callbacks:{title:()=>'', label:c=>[c.dataset.label, fmtV(c.raw)+MD.suf]}}
       },
       scales:{x:{ticks:{color:mut,font:{size:9}},grid:{display:false}},
-        y:{ticks:{color:mut,font:{size:9},callback:v=>'R$'+nf0.format(v)},grid:{color:cgrid()},beginAtZero:true}}
+        y:{ticks:{color:mut,font:{size:9},callback:v=>isMoney?'R$'+nf0.format(v):nf0.format(v)},grid:{color:cgrid()},beginAtZero:true}}
     }
   });
   // painel de legenda HTML: quadrado da cor | nome completo (1 linha, nunca corta) | CPMQL
   if(legEl){
     legEl.innerHTML = members.map((mv,idx)=>{
       const col=pal[idx%pal.length];
-      const cpmql = agg[mv]!=null ? derive(agg[mv]).cpmql : null;
+      const A=agg[mv]; const cpmql = A==null ? null : hierMetricVal(MET,A.sp,A.leads,A.mqls,A.checkins);
       const sel = !!(selSet && selSet.has(mv));
       return `<div class="cl-row${sel?' sel':''}" data-mv="${escHtml(mv)}" title="${escHtml(mv)}">`
         +`<span class="cl-swatch" style="background:${col}"></span>`
         +`<span class="cl-name">${escHtml(mv)}</span>`
-        +`<span class="cl-val">${brl(cpmql)}</span></div>`;
+        +`<span class="cl-val">${fmtV(cpmql)}</span></div>`;
     }).join('');
     legEl.querySelectorAll('.cl-row').forEach(row=>{
       row.addEventListener('click',()=>selDim(dimChar,row.dataset.mv,false));
@@ -1139,9 +1159,9 @@ function renderMeta(){
   // Mar03/Mar10: cada gráfico varia a dimensão da sua tabela — MQLs por dia, 1 linha
   // por membro, com legenda própria (cor · nome completo · CPMQL) e filtro bidirecional
   // com a tabela (STATE.mSel* determina quais linhas o gráfico plota).
-  mqlByDimChart('chCamp', Sc.fL, Sc.fM, aggC, 'camp', STATE.mSelC);
-  mqlByDimChart('chAdset', Sa.fL, Sa.fM, aggA, 'adset', STATE.mSelA);
-  mqlByDimChart('chAd', Sd.fL, Sd.fM, aggD, 'ad', STATE.mSelAd);
+  mqlByDimChart('chCamp', Sc.fL, Sc.fM, aggC, 'camp', STATE.mSelC, ckScope('C'));
+  mqlByDimChart('chAdset', Sa.fL, Sa.fM, aggA, 'adset', STATE.mSelA, ckScope('A'));
+  mqlByDimChart('chAd', Sd.fL, Sd.fM, aggD, 'ad', STATE.mSelAd, ckScope('D'));
 
   // qualified leads
   const q=fL.filter(l=>l.q).sort((a,b)=>(a.d<b.d?1:-1));
