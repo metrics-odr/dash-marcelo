@@ -1081,6 +1081,7 @@ function renderMeta(){
   const NA='<span class="na-tag">sem dado</span>', sk=salesOf(t);
   const steps=[
     ['Gasto Total', brl(g), [], false, 'hl-gasto'],
+    edPaceStep(),
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)],['Frequência',NA]]],
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
@@ -1288,7 +1289,7 @@ function setPage(p){ if(!PAGE_TITLES[p]) p='geral'; STATE.page=p;
   history.replaceState(null,'','#'+p);
   renderAll();
 }
-function renderAll(){ if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ed') renderEd(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
+function renderAll(){ renderEdDd(); if(STATE.page==='meta') renderMeta(); else if(STATE.page==='rel') renderRelatorio(); else if(STATE.page==='seg') renderSeg(); else if(STATE.page==='ed') renderEd(); else if(STATE.page==='ck') renderCk(); else if(STATE.page==='geral') renderGeral(); }
 
 /* ---------------- Seguidores: gasto por perfil + pace ideal ----------------
    Fonte: DATA.seg = aba Meta Ads da planilha das campanhas C1 (já filtrada e com perfil
@@ -1354,9 +1355,35 @@ function edCalc(e){
   const status=TODAY<e.ini?'Aguardando início':(restantes>0?'Em captação':'Captação encerrada');
   return {e,fim,gasto,saldo,restantes,pace,status,pct:e.verba>0?gasto/e.verba:null};
 }
+/* intervalo efetivamente selecionado no topo (dias avulsos têm prioridade) */
+function selRange(){
+  if(STATE.selDays.size){ const a=[...STATE.selDays].sort(); return [a[0],a[a.length-1]]; }
+  return (STATE.from&&STATE.to)?[STATE.from,STATE.to]:null;
+}
+function edSetAtiva(id,setPeriod){
+  try{ localStorage.setItem(ED_ATIVA,id); }catch(er){}
+  const e=edLoad().find(x=>x.id===id);
+  if(setPeriod&&e){ const fim=dayAdd(e.data,-1); STATE.from=e.ini; STATE.to=TODAY<fim?(TODAY<e.ini?fim:TODAY):fim; STATE.preset=''; STATE.selDays.clear(); syncDateInputs(); }
+}
+function renderEdDd(){
+  const list=edLoad().sort((a,b)=>a.data<b.data?1:-1), act=edAtiva(list);
+  ['edDdGeral','edDdMeta'].forEach(id=>{ const el=document.getElementById(id); if(!el) return;
+    if(!list.length){ el.innerHTML='<button class="ed-dd-btn" type="button" data-edd-go><span class="ed-dd-k">Edição</span><span>Cadastrar edição…</span></button>'; return; }
+    el.innerHTML='<button class="ed-dd-btn" type="button" data-edd-btn><span class="ed-dd-k">Edição</span><span>'+escHtml(act.nome)+'</span><span class="ed-dd-car">▾</span></button>'
+      +'<div class="ed-dd-list">'+list.map(e=>'<button class="ed-dd-item'+(e.id===act.id?' on':'')+'" type="button" data-edd-id="'+e.id+'">'+escHtml(e.nome)+'<small>captação '+dmy(e.ini)+' → edição '+dmy(e.data)+'</small></button>').join('')+'</div>'; });
+}
+document.addEventListener('click',ev=>{
+  const go=ev.target.closest('[data-edd-go]'); if(go){ setPage('ed'); return; }
+  const it=ev.target.closest('[data-edd-id]'); if(it){ edSetAtiva(it.dataset.eddId,true); document.querySelectorAll('.ed-dd.open').forEach(x=>x.classList.remove('open')); renderAll(); return; }
+  const b=ev.target.closest('[data-edd-btn]'); const root=b&&b.closest('.ed-dd');
+  document.querySelectorAll('.ed-dd.open').forEach(x=>{ if(x!==root) x.classList.remove('open'); });
+  if(root) root.classList.toggle('open');
+});
 function edPaceStep(){
   const e=edAtiva(edLoad());
   if(!e) return ['Pace ideal / dia','-',[['Configure a edição na aba Edições','']],false,'hl-pace'];
+  const rg=selRange();
+  if(rg && (rg[1]<e.ini || rg[0]>e.data)) return ['Pace ideal / dia · '+escHtml(e.nome),'<span class="ed-out">intervalo de datas fora do evento</span>',[],false,'hl-pace'];
   const c=edCalc(e);
   if(c.restantes<=0) return ['Pace ideal / dia · '+escHtml(e.nome),'-',[['Status','Captação encerrada'],['Gasto da edição',brl(c.gasto)]],false,'hl-pace'];
   return ['Pace ideal / dia · '+escHtml(e.nome),brl(c.pace),[['Verba restante',brl(c.saldo)],['Dias restantes',intf(c.restantes)],['Edição',dmy(e.data)]],false,'hl-pace'];
@@ -1376,7 +1403,7 @@ function renderEd(){
   }
   const rows=list.slice().sort((a,b)=>a.data<b.data?1:-1).map(e=>{ const c=edCalc(e), on=act&&act.id===e.id;
     return `<tr class="${on?'ed-on':''}"><td class="dim">${escHtml(e.nome)}${on?' ★':''}</td><td>${dmy(e.data)}</td><td>${dmy(e.ini)}</td><td>${brl(e.verba)}</td><td>${brl(c.gasto)}</td><td>${c.pace==null?'-':brl(c.pace)}</td><td>${c.status}</td>
-      <td><button class="ed-btn" data-act="use" data-id="${e.id}">Usar</button> <button class="ed-btn" data-act="del" data-id="${e.id}">Excluir</button></td></tr>`; }).join('');
+      <td><button class="ed-btn${on?' on':''}" data-act="use" data-id="${e.id}"${on?' disabled':''}>${on?'✓ Ativa':'Usar'}</button> <button class="ed-btn" data-act="del" data-id="${e.id}">Excluir</button></td></tr>`; }).join('');
   document.getElementById('edLista').innerHTML='<thead><tr><th>Edição</th><th>Data</th><th>Início captura</th><th>Verba</th><th>Gasto</th><th>Pace ideal/dia</th><th>Status</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="8">Nenhuma edição cadastrada.</td></tr>')+'</tbody>';
   document.getElementById('edNote').innerHTML='Pace ideal = (verba total COM imposto − gasto da edição com imposto ×'+TAX+') ÷ dias restantes (hoje incluso) ÷ '+TAX+' = orçamento diário SEM imposto a digitar no Meta Ads. A captação vai do início até a véspera da edição. Gasto = todo o Meta Ads do período (sem filtros de tela). Não muda com o toggle de imposto. A edição ★ é a que aparece no funil; no automático é a que está em captação (senão a próxima). Os cadastros ficam salvos neste navegador.';
 }
@@ -1392,7 +1419,7 @@ function renderEd(){
     ['edNome','edData','edIni','edVerba'].forEach(k=>$(k).value=''); msg('Edição salva e definida como ativa.'); renderAll();
   });
   $('edLista').addEventListener('click',ev=>{ const b=ev.target.closest('button[data-act]'); if(!b) return;
-    if(b.dataset.act==='use'){ try{ localStorage.setItem(ED_ATIVA,b.dataset.id); }catch(er){} }
+    if(b.dataset.act==='use'){ edSetAtiva(b.dataset.id,false); }
     else { edSave(edLoad().filter(e=>e.id!==b.dataset.id)); try{ if(localStorage.getItem(ED_ATIVA)===b.dataset.id) localStorage.removeItem(ED_ATIVA); }catch(er){} }
     renderAll(); });
 })();
