@@ -36,7 +36,7 @@ function nowBRTIso(){
 const STATE = {
   page:'geral', from:TODAY.slice(0,8)+'01', to:TODAY, preset:'mes', tax:true,
   selDays:new Set(),
-  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(), mCA:'todos', mQ:'', hierMetric:'cpmql',
+  mSelC:new Set(), mSelA:new Set(), mSelAd:new Set(), mCA:'todos', mQC:'', mQA:'', mQD:'', hierMetric:'cpmql',
   sort:{}, colw: JSON.parse(localStorage.getItem('dm_colw')||'{}'),
 };
 const taxf = ()=> STATE.tax ? TAX : 1;
@@ -1050,8 +1050,9 @@ function metaScope(ex){ let fL=leadsActive().filter(r=>r.src==='meta'), fM=metaA
   // filtro CA (Marcelo/Auricelio, pelo nome da campanha) e busca por nome (campanha/conjunto/anúncio)
   const nz=v=>String(v||'').toLowerCase();
   if(STATE.mCA!=='todos'){ const ca=STATE.mCA; fL=fL.filter(r=>nz(r.camp).includes(ca)); fM=fM.filter(r=>nz(r.camp).includes(ca)); }
-  const q=nz(STATE.mQ).trim();
-  if(q){ const hit=r=>nz(r.camp).includes(q)||nz(r.adset).includes(q)||nz(r.ad).includes(q); fL=fL.filter(hit); fM=fM.filter(hit); }
+  // busca POR TABELA: cada campo filtra a propria dimensao (sempre) e, cumulativamente, as demais tabelas
+  [['mQC','camp'],['mQA','adset'],['mQD','ad']].forEach(([k,f])=>{ const q=nz(STATE[k]).trim();
+    if(q){ const hit=r=>nz(r[f]).includes(q); fL=fL.filter(hit); fM=fM.filter(hit); } });
   if(ex!=='C'&&STATE.mSelC.size){ fL=fL.filter(r=>STATE.mSelC.has(r.camp)); fM=fM.filter(r=>STATE.mSelC.has(r.camp)); }
   if(ex!=='A'&&STATE.mSelA.size){ fL=fL.filter(r=>STATE.mSelA.has(r.adset)); fM=fM.filter(r=>STATE.mSelA.has(r.adset)); }
   if(ex!=='D'&&STATE.mSelAd.size){ fL=fL.filter(r=>STATE.mSelAd.has(r.ad)); fM=fM.filter(r=>STATE.mSelAd.has(r.ad)); }
@@ -1069,8 +1070,8 @@ function ckScope(ex){
   const nz=v=>String(v||'').toLowerCase();
   let f=CKS.filter(c=>c.ads&&dateActive(c.d));
   if(STATE.mCA!=='todos') f=f.filter(c=>nz(c.camp).includes(STATE.mCA));
-  const q=nz(STATE.mQ).trim();
-  if(q) f=f.filter(c=>nz(c.camp).includes(q)||nz(c.adset).includes(q)||nz(c.ad).includes(q));
+  [['mQC','camp'],['mQA','adset'],['mQD','ad']].forEach(([k,f2])=>{ const q=nz(STATE[k]).trim();
+    if(q) f=f.filter(c=>nz(c[f2]).includes(q)); });
   if(ex!=='C'&&STATE.mSelC.size) f=f.filter(c=>STATE.mSelC.has(c.camp));
   if(ex!=='A'&&STATE.mSelA.size) f=f.filter(c=>STATE.mSelA.has(c.adset));
   if(ex!=='D'&&STATE.mSelAd.size) f=f.filter(c=>STATE.mSelAd.has(c.ad));
@@ -1490,11 +1491,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ppIsOpen()) ppClos
 /* modal genérico (Ações Agendadas) — fecha ao clicar no backdrop ou Esc */
 document.getElementById('modalRoot').addEventListener('click',e=>{ if(e.target.id==='modalRoot'||e.target.classList.contains('modal-backdrop')) closeModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
-(function(){ const ca=document.getElementById('mCA'), q=document.getElementById('mSearch');
+(function(){ const ca=document.getElementById('mCA');
   if(ca) ca.addEventListener('change',()=>{ STATE.mCA=ca.value; renderMeta(); });
-  if(q) q.addEventListener('input',()=>{ STATE.mQ=q.value; renderMeta(); });
+  // busca + "limpar filtros" por tabela (limpa a busca e as linhas selecionadas daquela tabela)
+  [['C','mQC','mSelC'],['A','mQA','mSelA'],['D','mQD','mSelAd']].forEach(([d,qk,sk])=>{
+    const q=document.getElementById('mSearch'+d), b=document.getElementById('mClear'+d);
+    if(q) q.addEventListener('input',()=>{ STATE[qk]=q.value; renderMeta(); });
+    if(b) b.addEventListener('click',()=>{ STATE[qk]=''; STATE[sk].clear(); if(q) q.value=''; renderMeta(); });
+  });
 })();
-document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mCA='todos'; STATE.mQ=''; const _ca=document.getElementById('mCA'),_q=document.getElementById('mSearch'); if(_ca)_ca.value='todos'; if(_q)_q.value=''; STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
+document.getElementById('clearBtn').addEventListener('click',()=>{ STATE.mCA='todos'; STATE.mQC=STATE.mQA=STATE.mQD=''; const _ca=document.getElementById('mCA'); if(_ca)_ca.value='todos'; ['C','A','D'].forEach(d=>{const _q=document.getElementById('mSearch'+d); if(_q)_q.value='';}); STATE.mSelC.clear();STATE.mSelA.clear();STATE.mSelAd.clear();STATE.selDays.clear(); applyPreset('mes'); });
 document.getElementById('refreshBtn').addEventListener('click',function(){ this.classList.add('loading'); location.href=location.pathname+'?t='+Date.now()+location.hash; });
 
 /* painel de Metas & parâmetros — edita ao vivo, salva em localStorage e recolore

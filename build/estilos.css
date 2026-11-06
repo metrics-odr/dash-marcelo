@@ -506,3 +506,8 @@
   .modal-root{align-items:flex-end}
   .modal-card{width:100%; max-width:100%; border-radius:16px 16px 0 0; max-height:90vh}
 }
+/* busca + limpar filtros por tabela (hierarquia) */
+.tbl-tools{display:flex;gap:8px;align-items:center}
+.tbl-tools input{flex:1 1 220px;min-width:0;max-width:360px;font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border,#d0d5dd);border-radius:6px;background:var(--card,#fff);color:inherit}
+.tbl-tools .btn-clear{font:inherit;font-size:12px;font-weight:500;padding:6px 10px;border:1px solid var(--border,#d0d5dd);border-radius:6px;background:var(--card,#fff);color:var(--muted);cursor:pointer;white-space:nowrap}
+.tbl-tools .btn-clear:hover{color:inherit;border-color:currentColor}

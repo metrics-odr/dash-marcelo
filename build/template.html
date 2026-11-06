@@ -144,10 +144,9 @@
         <h2 class="sec-title">Hierarquia · Campanha → Conjunto → Anúncio</h2>
         <div class="hier-filters">
           <label>CA: <select id="mCA"><option value="todos">Todos</option><option value="marcelo">Marcelo</option><option value="auricelio">Auricelio</option></select></label>
-          <input type="search" id="mSearch" placeholder="Pesquisar campanha, conjunto ou anúncio…" autocomplete="off">
         </div>
         <div class="table-chart-pair">
-          <div class="thead-title">Campanhas</div>
+          <div class="thead-title tbl-tools"><input type="search" id="mSearchC" placeholder="Pesquisar campanha…" autocomplete="off"><button type="button" class="btn-clear" id="mClearC" title="Limpar busca e seleção desta tabela">Limpar filtros</button></div>
           <div class="tbl-wrap tbl-normal"><table class="dt" id="tCamp"></table></div>
           <div class="pair-chart">
             <div class="pc-title"><span id="chCampTitle">Custo por MQL</span>, por campanha, por dia · clique numa linha ou na legenda para filtrar</div>
@@ -157,7 +156,7 @@
           </div>
         </div>
         <div class="table-chart-pair">
-          <div class="thead-title">Conjuntos (Ad Sets)</div>
+          <div class="thead-title tbl-tools"><input type="search" id="mSearchA" placeholder="Pesquisar conjunto…" autocomplete="off"><button type="button" class="btn-clear" id="mClearA" title="Limpar busca e seleção desta tabela">Limpar filtros</button></div>
           <div class="tbl-wrap tbl-normal"><table class="dt" id="tAdset"></table></div>
           <div class="pair-chart">
             <div class="pc-title"><span id="chAdsetTitle">Custo por MQL</span>, por conjunto, por dia · clique numa linha ou na legenda para filtrar</div>
@@ -167,7 +166,7 @@
           </div>
         </div>
         <div class="table-chart-pair">
-          <div class="thead-title">Anúncios</div>
+          <div class="thead-title tbl-tools"><input type="search" id="mSearchD" placeholder="Pesquisar anúncio…" autocomplete="off"><button type="button" class="btn-clear" id="mClearD" title="Limpar busca e seleção desta tabela">Limpar filtros</button></div>
           <div class="tbl-wrap tbl-double"><table class="dt" id="tAd"></table></div>
           <div class="pair-chart">
             <div class="pc-title"><span id="chAdTitle">Custo por MQL</span>, por anúncio, por dia · clique numa linha ou na legenda para filtrar</div>
