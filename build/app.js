@@ -452,7 +452,7 @@ function renderGeralCore(ids){
     ['Cliques', intf(t.cl), [['CTR',pct(dv.ctr)],['CPC',brl(dv.cpc)]]],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
     ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
-    ['Vendas', NA, [['CAC',NA]], true],
+    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(salesOf(t).convmql)],['CPCIN',brl(salesOf(t).cpcin)]]],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById(ids.funnel).innerHTML=funnelHTML(steps);
@@ -1058,7 +1058,7 @@ function ckScope(ex){
 function renderMeta(){
   const F=metaScope(null), fL=F.fL, fM=F.fM, ck=ckScope(null);   // KPIs, funil, graficos e tabela diaria
   const t=totals(fL,fM,ck), dv=derive(t), g=dv.gasto;
-  const NA='<span class="na-tag">sem dado</span>';
+  const NA='<span class="na-tag">sem dado</span>', sk=salesOf(t);
   const steps=[
     ['Gasto Total', brl(g), [], false, 'hl-gasto'],
     ['Impressões', intf(t.im), [['CPM',brl(dv.cpm)],['Frequência',NA]]],
@@ -1066,7 +1066,7 @@ function renderMeta(){
     ['Page Views', NA, [['CR',NA],['CPV',NA]], true],
     ['Leads', intf(t.leads), [['CPL',brl(dv.cpl)],['ConvForm',pct(dv.convf)]]],
     ['MQLs (≥30k)', intf(t.mqls), [['Tx‑MQL',pct(dv.tx)],['CPMQL',brl(dv.cpmql)]], false, 'hl-mql'],
-    ['Vendas', NA, [['ConvMQL',NA],['CAC',NA]], true],
+    ['Check‑ins', intf(t.checkins), [['ConvMQL',pct(sk.convmql)],['CPCIN',brl(sk.cpcin)]]],
     ['Faturamento', NA, [['ROAS',NA],['Ticket',NA]], true],
   ];
   document.getElementById('metaFunnel').innerHTML=funnelHTML(steps);
